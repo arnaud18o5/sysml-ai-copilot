@@ -34,12 +34,13 @@ GRAMMAR = r"""
 
     qualname: NAME ("." NAME)*
 
-    NAME: /[A-Za-z_][A-Za-z0-9_]*/
+    NAME: /[A-Za-z_][A-Za-z0-9_]*/ | /'([^'\\]|\\.)*'/
     DOC_COMMENT: /\/\*.*?\*\//s
 
     %import common.WS
     %ignore WS
     %ignore /\/\/[^\n]*/
+    %ignore DOC_COMMENT
 """
 
 _parser = Lark(GRAMMAR, parser="earley")
@@ -73,8 +74,20 @@ class Relation:
         return {"source": self.source, "target": self.target, "type": self.type}
 
 
+def _clean_name(raw):
+    """Strip the surrounding quotes from a SysML v2 unrestricted name.
+
+    `'system-of-systems'` -> `system-of-systems`. Restricted (unquoted)
+    names are returned unchanged.
+    """
+    raw = str(raw)
+    if raw.startswith("'") and raw.endswith("'"):
+        return raw[1:-1]
+    return raw
+
+
 def _qualname_str(qualname_tree):
-    return ".".join(str(tok) for tok in qualname_tree.children)
+    return ".".join(_clean_name(tok) for tok in qualname_tree.children)
 
 
 class _Model:
@@ -145,7 +158,7 @@ def _walk_members(members, model, scope_path, container_id):
 
 def _walk_node(node, model, scope_path, container_id):
     if node.data == "part_def":
-        name = str(node.children[0])
+        name = _clean_name(node.children[0])
         body = [c for c in node.children[1:] if isinstance(c, Tree)]
         elem = model.add_element("PartDefinition", name, scope_path)
         if container_id:
@@ -153,7 +166,7 @@ def _walk_node(node, model, scope_path, container_id):
         _walk_members(body, model, scope_path + [name], elem.id)
 
     elif node.data == "port_def":
-        name = str(node.children[0])
+        name = _clean_name(node.children[0])
         body = [c for c in node.children[1:] if isinstance(c, Tree)]
         elem = model.add_element("PortDefinition", name, scope_path)
         if container_id:
@@ -161,7 +174,7 @@ def _walk_node(node, model, scope_path, container_id):
         _walk_members(body, model, scope_path + [name], elem.id)
 
     elif node.data == "part_usage":
-        name = str(node.children[0])
+        name = _clean_name(node.children[0])
         type_ref = _qualname_str(node.children[1])
         body = [c for c in node.children[2:] if isinstance(c, Tree)]
         elem = model.add_element("PartUsage", name, scope_path)
@@ -173,7 +186,7 @@ def _walk_node(node, model, scope_path, container_id):
         _walk_members(body, model, scope_path + [name], elem.id)
 
     elif node.data == "port_usage":
-        name = str(node.children[0])
+        name = _clean_name(node.children[0])
         type_ref = _qualname_str(node.children[1])
         elem = model.add_element("PortUsage", name, scope_path)
         if container_id:
@@ -191,7 +204,7 @@ def _walk_node(node, model, scope_path, container_id):
             model.add_relation(left_id, right_id, "CONNECTS_TO")
 
     elif node.data == "requirement_def":
-        name = str(node.children[0])
+        name = _clean_name(node.children[0])
         doc = None
         for c in node.children[1:]:
             if isinstance(c, Tree) and c.data == "doc_stmt":
@@ -202,7 +215,7 @@ def _walk_node(node, model, scope_path, container_id):
             model.add_relation(container_id, elem.id, "CONTAINS")
 
     elif node.data == "satisfy_stmt":
-        req_name = str(node.children[0])
+        req_name = _clean_name(node.children[0])
         by_ref = _qualname_str(node.children[1]).split(".")
         req_id = model.resolve([req_name], scope_path)
         by_id = model.resolve(by_ref, scope_path)
@@ -213,7 +226,7 @@ def _walk_node(node, model, scope_path, container_id):
 def parse_sysml(text):
     tree = _parser.parse(text)
     package_node = tree.children[0]
-    package_name = str(package_node.children[0])
+    package_name = _clean_name(package_node.children[0])
     members = [c for c in package_node.children[1:] if isinstance(c, Tree)]
 
     model = _Model()
