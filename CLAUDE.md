@@ -37,7 +37,7 @@ Use the `run-pipeline` skill for this instead of re-deriving the steps.
 
 ## Known limitations (don't treat as bugs to silently fix without discussion)
 
-- Only a subset of SysML v2 textual notation is supported: no imports, no feature specialization/redefinition, no typed attributes.
+- Only a subset of SysML v2 textual notation is supported: no imports, no feature specialization/redefinition.
 - Model modification (write-back) is not implemented — read-only ingestion + analysis only, by design (see README).
 - Retrieval quality is weak on elements with little/no `doc` text — this is a data/richness problem, not something to solve by changing the embedding model further without checking with the maintainer first.
 
