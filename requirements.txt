@@ -1,0 +1,3 @@
+lark>=1.1
+neo4j>=5.20
+fastembed>=0.3
