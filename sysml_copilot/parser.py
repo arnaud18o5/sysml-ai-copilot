@@ -1,7 +1,8 @@
 """Parser for a subset of the SysML v2 textual notation.
 
-Covers: package, part def, port def, part/port usage, connect, requirement def, satisfy.
-Produces a list of elements and a list of typed relations, ready to load into a graph.
+Covers: package, part def, port def, part/port usage, connect, requirement def,
+satisfy, import. Produces a list of elements and a list of typed relations,
+ready to load into a graph.
 """
 
 from lark import Lark, Tree, Token
@@ -18,6 +19,11 @@ GRAMMAR = r"""
           | connect_stmt
           | requirement_def
           | satisfy_stmt
+          | import_stmt
+
+    import_stmt: "private"? "import" import_path ";"
+    import_path: NAME ("::" (NAME | WILDCARD))*
+    WILDCARD: "**" | "*"
 
     part_def: "part" "def" NAME ("{" member* "}" | ";")
     port_def: "port" "def" NAME ("{" member* "}" | ";")
@@ -88,6 +94,10 @@ def _clean_name(raw):
 
 def _qualname_str(qualname_tree):
     return ".".join(_clean_name(tok) for tok in qualname_tree.children)
+
+
+def _import_path_str(import_path_tree):
+    return "::".join(str(tok) for tok in import_path_tree.children)
 
 
 class _Model:
@@ -221,6 +231,12 @@ def _walk_node(node, model, scope_path, container_id):
         by_id = model.resolve(by_ref, scope_path)
         if req_id and by_id:
             model.add_relation(by_id, req_id, "SATISFIES")
+
+    elif node.data == "import_stmt":
+        path = _import_path_str(node.children[0])
+        elem = model.add_element("Import", path, scope_path)
+        if container_id:
+            model.add_relation(container_id, elem.id, "CONTAINS")
 
 
 def parse_sysml(text):
