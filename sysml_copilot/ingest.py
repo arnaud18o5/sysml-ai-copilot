@@ -4,7 +4,7 @@ from neo4j import GraphDatabase
 
 from . import config
 from .embeddings import embed_texts, element_text
-from .parser import parse_sysml
+from .parser import SysmlSyntaxError, parse_sysml
 
 
 def get_driver():
@@ -69,7 +69,18 @@ def load_relations(session, relations):
 def ingest_file(path):
     with open(path) as f:
         text = f.read()
-    elements, relations = parse_sysml(text)
+    try:
+        elements, relations = parse_sysml(text)
+    except SysmlSyntaxError as exc:
+        if isinstance(exc.line, int) and exc.line > 0:
+            print(f"Erreur de syntaxe SysML v2 dans {path}, à la ligne {exc.line}, colonne {exc.column} :")
+        else:
+            print(f"Erreur de syntaxe SysML v2 dans {path} :")
+        if exc.context:
+            print(exc.context)
+        else:
+            print(str(exc))
+        sys.exit(1)
 
     texts = [element_text(e) for e in elements]
     embeddings = embed_texts(texts)
