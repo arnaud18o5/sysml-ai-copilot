@@ -67,8 +67,13 @@ def load_relations(session, relations):
 
 
 def ingest_file(path):
-    with open(path) as f:
-        text = f.read()
+    try:
+        with open(path) as f:
+            text = f.read()
+    except OSError as e:
+        print(f"Impossible de lire le fichier {path} : {e.strerror or e}")
+        sys.exit(1)
+
     elements, relations = parse_sysml(text)
 
     texts = [element_text(e) for e in elements]
