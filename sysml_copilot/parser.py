@@ -36,7 +36,7 @@ GRAMMAR = r"""
     requirement_def: "requirement" "def" NAME "{" doc_stmt? "}"
     doc_stmt: "doc" DOC_COMMENT
 
-    satisfy_stmt: "satisfy" NAME "by" qualname ";"
+    satisfy_stmt: "satisfy" qualname "by" qualname ";"
 
     qualname: NAME ("." NAME)*
 
@@ -225,9 +225,9 @@ def _walk_node(node, model, scope_path, container_id):
             model.add_relation(container_id, elem.id, "CONTAINS")
 
     elif node.data == "satisfy_stmt":
-        req_name = _clean_name(node.children[0])
+        req_ref = _qualname_str(node.children[0]).split(".")
         by_ref = _qualname_str(node.children[1]).split(".")
-        req_id = model.resolve([req_name], scope_path)
+        req_id = model.resolve(req_ref, scope_path)
         by_id = model.resolve(by_ref, scope_path)
         if req_id and by_id:
             model.add_relation(by_id, req_id, "SATISFIES")
