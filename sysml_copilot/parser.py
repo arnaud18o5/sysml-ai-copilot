@@ -5,6 +5,8 @@ satisfy, import. Produces a list of elements and a list of typed relations,
 ready to load into a graph.
 """
 
+import re
+
 from lark import Lark, Tree, Token
 
 GRAMMAR = r"""
@@ -81,14 +83,15 @@ class Relation:
 
 
 def _clean_name(raw):
-    """Strip the surrounding quotes from a SysML v2 unrestricted name.
+    """Strip the surrounding quotes from a SysML v2 unrestricted name and
+    unescape backslash escapes inside it.
 
-    `'system-of-systems'` -> `system-of-systems`. Restricted (unquoted)
-    names are returned unchanged.
+    `'system-of-systems'` -> `system-of-systems`. `'a\\'b'` -> `a'b`.
+    Restricted (unquoted) names are returned unchanged.
     """
     raw = str(raw)
     if raw.startswith("'") and raw.endswith("'"):
-        return raw[1:-1]
+        return re.sub(r"\\(.)", r"\1", raw[1:-1])
     return raw
 
 
