@@ -4,6 +4,7 @@ package VehicleFuelSystem {
 
     part def Engine {
         port fuelIn : FuelPort;
+        port diagnosticsPort;
     }
 
     part def FuelTank {
