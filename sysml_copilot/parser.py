@@ -109,6 +109,11 @@ class _Model:
 
     def add_element(self, kind, name, scope_path, doc=None):
         qualified_name = ".".join(scope_path + [name])
+        if qualified_name in self.by_qualified_name:
+            raise ValueError(
+                f"Duplicate qualified name '{qualified_name}': an element with "
+                "this name already exists in the same scope."
+            )
         elem = Element(qualified_name, kind, name, qualified_name, doc)
         self.elements.append(elem)
         self.by_qualified_name[qualified_name] = elem
