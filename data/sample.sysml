@@ -10,9 +10,13 @@ package VehicleFuelSystem {
         port fuelOut : FuelPort;
     }
 
+    part def Seal;
+
     part def FuelPump {
         port fuelIn : FuelPort;
-        port fuelOut : FuelPort;
+        port fuelOut : FuelPort {
+            part seal : Seal;
+        }
     }
 
     part def Vehicle {

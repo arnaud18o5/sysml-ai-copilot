@@ -29,7 +29,7 @@ GRAMMAR = r"""
     port_def: "port" "def" NAME ("{" member* "}" | ";")
 
     part_usage: "part" NAME ":" qualname ("{" member* "}" | ";")
-    port_usage: "port" NAME ":" qualname ";"
+    port_usage: "port" NAME ":" qualname ("{" member* "}" | ";")
 
     connect_stmt: "connect" qualname "to" qualname ";"
 
@@ -198,12 +198,14 @@ def _walk_node(node, model, scope_path, container_id):
     elif node.data == "port_usage":
         name = _clean_name(node.children[0])
         type_ref = _qualname_str(node.children[1])
+        body = [c for c in node.children[2:] if isinstance(c, Tree)]
         elem = model.add_element("PortUsage", name, scope_path)
         if container_id:
             model.add_relation(container_id, elem.id, "CONTAINS")
         target = model.resolve(type_ref.split("."), scope_path)
         if target:
             model.add_relation(elem.id, target, "TYPED_BY")
+        _walk_members(body, model, scope_path + [name], elem.id)
 
     elif node.data == "connect_stmt":
         left = _qualname_str(node.children[0]).split(".")
