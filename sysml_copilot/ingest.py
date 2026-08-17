@@ -42,6 +42,7 @@ def load_elements(session, elements, embeddings):
                 e.name = $name,
                 e.qualified_name = $qualified_name,
                 e.doc = $doc,
+                e.value = $value,
                 e.embedding = $embedding
             """,
             id=element["id"],
@@ -49,6 +50,7 @@ def load_elements(session, elements, embeddings):
             name=element["name"],
             qualified_name=element["qualified_name"],
             doc=element.get("doc"),
+            value=element.get("value"),
             embedding=embedding,
         )
 
