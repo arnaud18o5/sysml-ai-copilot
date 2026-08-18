@@ -13,7 +13,7 @@ See [README.md](README.md) for the full architecture and usage, and [CONTRIBUTIN
 - **`main` is protected.** Always work on a `type/short-description` branch and open a PR — never push to `main` directly.
 - **Open the PR, then stop — do not merge it.** Merging `main` requires 1 approving review, and GitHub won't let a PR author approve their own PR. PRs opened via `gh pr create` under the maintainer's authenticated `gh` session count as authored by them, so only an actual human review from @arnaud18o5 (using the admin bypass, since `enforce_admins` is off) can merge. Never call `gh pr merge`.
 - **Commit messages and PR titles are Conventional Commits** (`feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`, etc.), enforced by a local `commit-msg` hook and a CI check on PR titles. Write commits in that format from the start rather than fixing them after the hook rejects them.
-- **Code comments and docstrings are in English.** User-facing CLI output strings (the `print()` calls in `query.py`/`ingest.py`) are in French — that's intentional, matches how the maintainer interacts with the tool. Don't "fix" that.
+- **Code comments, docstrings, and user-facing CLI output are all in English.** The `print()` calls in `query.py`/`ingest.py` used to be in French; that convention was dropped per maintainer request (PR #26) — write new CLI output in English.
 
 ## Environment gotcha
 

@@ -6,6 +6,7 @@ ready to load into a graph.
 """
 
 from lark import Lark, Tree, Token
+from lark.exceptions import UnexpectedInput
 
 GRAMMAR = r"""
     start: package
@@ -78,6 +79,21 @@ class Element:
             "doc": self.doc,
             "value": self.value,
         }
+
+
+class SysmlSyntaxError(Exception):
+    """Raised when the input text isn't valid SysML v2 (subset) syntax.
+
+    Wraps the underlying Lark parsing error with the offending line/column
+    and a source snippet exposed as attributes, so callers (e.g. `ingest.py`)
+    can present a diagnosable message instead of a raw Lark traceback.
+    """
+
+    def __init__(self, message, line=None, column=None, context=None):
+        super().__init__(message)
+        self.line = line
+        self.column = column
+        self.context = context
 
 
 class Relation:
@@ -280,7 +296,13 @@ def _walk_node(node, model, scope_path, container_id):
 
 
 def parse_sysml(text):
-    tree = _parser.parse(text)
+    try:
+        tree = _parser.parse(text)
+    except UnexpectedInput as exc:
+        line = getattr(exc, "line", None)
+        column = getattr(exc, "column", None)
+        context = exc.get_context(text)
+        raise SysmlSyntaxError(str(exc), line=line, column=column, context=context) from exc
     package_node = tree.children[0]
     package_name = _clean_name(package_node.children[0])
     members = [c for c in package_node.children[1:] if isinstance(c, Tree)]
