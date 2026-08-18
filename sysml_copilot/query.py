@@ -1,5 +1,6 @@
 import sys
 
+from . import config
 from .embeddings import embed_texts
 from .ingest import get_driver
 
@@ -37,7 +38,8 @@ def impact_analysis(session, element_id, max_hops=3):
     return [dict(record) for record in result]
 
 
-def run(nl_query, max_hops=3, top_k=3):
+def run(nl_query, max_hops=3, top_k=3, min_score=None):
+    min_score = config.MIN_MATCH_SCORE if min_score is None else min_score
     driver = get_driver()
     with driver.session() as session:
         candidates = resolve_element(session, nl_query, top_k=top_k)
@@ -45,6 +47,12 @@ def run(nl_query, max_hops=3, top_k=3):
             print("Aucun élément trouvé.")
             return
         best = candidates[0]
+        if best["score"] < min_score:
+            print(
+                f"Aucun élément suffisamment pertinent trouvé "
+                f"(meilleur score={best['score']:.3f}, seuil={min_score:.3f})."
+            )
+            return
         print(
             f"Élément résolu : {best['qualified_name']} "
             f"({best['kind']}, score={best['score']:.3f})"
