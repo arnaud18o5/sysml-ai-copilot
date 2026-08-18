@@ -73,9 +73,9 @@ def ingest_file(path):
         elements, relations = parse_sysml(text)
     except SysmlSyntaxError as exc:
         if isinstance(exc.line, int) and exc.line > 0:
-            print(f"Erreur de syntaxe SysML v2 dans {path}, à la ligne {exc.line}, colonne {exc.column} :")
+            print(f"SysML v2 syntax error in {path}, at line {exc.line}, column {exc.column}:")
         else:
-            print(f"Erreur de syntaxe SysML v2 dans {path} :")
+            print(f"SysML v2 syntax error in {path}:")
         if exc.context:
             print(exc.context)
         else:
@@ -93,7 +93,7 @@ def ingest_file(path):
         load_relations(session, relations)
     driver.close()
 
-    print(f"{len(elements)} éléments et {len(relations)} relations chargés depuis {path}")
+    print(f"{len(elements)} elements and {len(relations)} relations loaded from {path}")
 
 
 if __name__ == "__main__":
