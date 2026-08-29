@@ -31,6 +31,10 @@ package VehicleFuelSystem {
 
     requirement def FuelDeliveryRequirement {
         doc /* The system shall deliver fuel to the engine within 2 seconds of ignition. */
+
+        requirement def ResponseTimeRequirement {
+            doc /* The fuel pump shall reach full flow within 2 seconds of ignition. */
+        }
     }
 
     requirement def FuelPurityRequirement {
