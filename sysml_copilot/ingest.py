@@ -4,7 +4,7 @@ from neo4j import GraphDatabase
 
 from . import config
 from .embeddings import embed_texts, element_text
-from .parser import parse_sysml
+from .parser import SysmlSyntaxError, parse_sysml
 
 # Relationship types the parser is known to emit. Cypher relationship types
 # can't be parameterized, so `load_relations` interpolates this value into
@@ -48,6 +48,7 @@ def load_elements(session, elements, embeddings):
                 e.name = $name,
                 e.qualified_name = $qualified_name,
                 e.doc = $doc,
+                e.value = $value,
                 e.embedding = $embedding
             """,
             id=element["id"],
@@ -55,6 +56,7 @@ def load_elements(session, elements, embeddings):
             name=element["name"],
             qualified_name=element["qualified_name"],
             doc=element.get("doc"),
+            value=element.get("value"),
             embedding=embedding,
         )
 
@@ -77,7 +79,18 @@ def load_relations(session, relations):
 def ingest_file(path):
     with open(path) as f:
         text = f.read()
-    elements, relations = parse_sysml(text)
+    try:
+        elements, relations = parse_sysml(text)
+    except SysmlSyntaxError as exc:
+        if isinstance(exc.line, int) and exc.line > 0:
+            print(f"SysML v2 syntax error in {path}, at line {exc.line}, column {exc.column}:")
+        else:
+            print(f"SysML v2 syntax error in {path}:")
+        if exc.context:
+            print(exc.context)
+        else:
+            print(str(exc))
+        sys.exit(1)
 
     texts = [element_text(e) for e in elements]
     embeddings = embed_texts(texts)

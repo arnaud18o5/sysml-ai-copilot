@@ -21,4 +21,6 @@ def element_text(element):
     parts = [element["kind"], element["name"]]
     if element.get("doc"):
         parts.append(element["doc"])
+    if element.get("value") is not None:
+        parts.append(f"= {element['value']}")
     return " - ".join(parts)
