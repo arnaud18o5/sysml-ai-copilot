@@ -1,4 +1,4 @@
-import sys
+import argparse
 
 from .embeddings import embed_texts
 from .ingest import get_driver
@@ -61,6 +61,33 @@ def run(nl_query, max_hops=3, top_k=3):
     driver.close()
 
 
+def build_arg_parser():
+    parser = argparse.ArgumentParser(
+        prog="python -m sysml_copilot.query",
+        description="Resolves a natural-language question to a model element "
+        "then analyzes its impact by traversing the graph.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=3,
+        help="Number of candidates to resolve via vector search (default: 3).",
+    )
+    parser.add_argument(
+        "--max-hops",
+        type=int,
+        default=3,
+        help="Maximum traversal depth for impact analysis (default: 3).",
+    )
+    parser.add_argument(
+        "query",
+        nargs=argparse.REMAINDER,
+        help="Natural-language question (options must precede it).",
+    )
+    return parser
+
+
 if __name__ == "__main__":
-    query = " ".join(sys.argv[1:]) or "quel est l'impact de la pompe à carburant ?"
-    run(query)
+    args = build_arg_parser().parse_args()
+    query = " ".join(args.query) or "what is the impact of the fuel pump?"
+    run(query, max_hops=args.max_hops, top_k=args.top_k)

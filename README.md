@@ -39,6 +39,12 @@ Run an impact-analysis query in natural language:
 python -m sysml_copilot.query "what is the impact of the fuel pump?"
 ```
 
+Optional flags (must precede the question), `--top-k` (candidates returned by vector search, default 3) and `--max-hops` (impact-analysis traversal depth, default 3):
+
+```bash
+python -m sysml_copilot.query --top-k 5 --max-hops 2 "what is the impact of the fuel pump?"
+```
+
 Neo4j browser is available at `http://localhost:7474` (default credentials: `neo4j` / `password123`, see `docker-compose.yml`).
 
 ## Project structure
