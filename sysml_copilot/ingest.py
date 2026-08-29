@@ -87,13 +87,12 @@ def ingest_file(path):
     texts = [element_text(e) for e in elements]
     embeddings = embed_texts(texts)
 
-    driver = get_driver()
-    with driver.session() as session:
-        reset_graph(session)
-        ensure_vector_index(session)
-        load_elements(session, elements, embeddings)
-        load_relations(session, relations)
-    driver.close()
+    with get_driver() as driver:
+        with driver.session() as session:
+            reset_graph(session)
+            ensure_vector_index(session)
+            load_elements(session, elements, embeddings)
+            load_relations(session, relations)
 
     print(f"{len(elements)} elements and {len(relations)} relations loaded from {path}")
 
