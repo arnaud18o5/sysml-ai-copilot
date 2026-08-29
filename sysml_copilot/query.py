@@ -22,11 +22,24 @@ def resolve_element(session, nl_query, top_k=3):
 
 
 def impact_analysis(session, element_id, max_hops=3):
+    # The path pattern below is undirected (no `>`/`<`) so CONNECTS_TO and
+    # SATISFIES, which are genuinely symmetric between two related elements,
+    # can be traversed either way. TYPED_BY is not symmetric though: it
+    # points from a usage to its type, and traversing it backward walks into
+    # every *other* usage that happens to share that type -- unrelated
+    # siblings, not real impact. The WHERE clause below allows a TYPED_BY
+    # hop only when it's traversed forward (usage -> type), by checking that
+    # the relationship's actual start node matches the node the path visits
+    # it from.
     result = session.run(
         f"""
         MATCH path = (start:Element {{id: $id}})
                      -[:{IMPACT_RELATIONSHIP_TYPES}*1..{max_hops}]-(other:Element)
         WHERE other.id <> $id
+          AND all(i IN range(0, length(path) - 1) WHERE
+                type(relationships(path)[i]) <> 'TYPED_BY'
+                OR startNode(relationships(path)[i]) = nodes(path)[i]
+              )
         WITH other, min(length(path)) AS distance
         RETURN other.id AS id, other.kind AS kind, other.name AS name,
                other.qualified_name AS qualified_name, distance
@@ -62,5 +75,5 @@ def run(nl_query, max_hops=3, top_k=3):
 
 
 if __name__ == "__main__":
-    query = " ".join(sys.argv[1:]) or "quel est l'impact de la pompe à carburant ?"
+    query = " ".join(sys.argv[1:]) or "what is the impact of the fuel pump?"
     run(query)
