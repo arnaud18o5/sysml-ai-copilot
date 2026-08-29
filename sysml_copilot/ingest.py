@@ -62,7 +62,7 @@ def load_elements(session, elements, embeddings):
 def load_relations(session, relations):
     for relation in relations:
         if relation["type"] not in KNOWN_RELATIONSHIP_TYPES:
-            raise ValueError(f"Type de relation inconnu : {relation['type']!r}")
+            raise ValueError(f"Unknown relation type: {relation['type']!r}")
         session.run(
             f"""
             MATCH (a:Element {{id: $source}})
@@ -90,7 +90,7 @@ def ingest_file(path):
         load_relations(session, relations)
     driver.close()
 
-    print(f"{len(elements)} éléments et {len(relations)} relations chargés depuis {path}")
+    print(f"{len(elements)} elements and {len(relations)} relations loaded from {path}")
 
 
 if __name__ == "__main__":
