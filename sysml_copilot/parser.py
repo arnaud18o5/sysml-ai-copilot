@@ -32,7 +32,7 @@ GRAMMAR = r"""
     port_def: "port" "def" NAME ("{" member* "}" | ";")
     attribute_def: "attribute" "def" NAME ("{" member* "}" | ";")
 
-    part_usage: "part" NAME ":" qualname ("{" member* "}" | ";")
+    part_usage: "part" NAME (":" qualname)? ("{" member* "}" | ";")
     port_usage: "port" NAME ":" qualname ";"
     attribute_usage: "attribute" NAME ":" qualname ("=" attr_value)? ";"
 
@@ -219,14 +219,19 @@ def _walk_node(node, model, scope_path, container_id):
 
     elif node.data == "part_usage":
         name = _clean_name(node.children[0])
-        type_ref = _qualname_str(node.children[1])
-        body = [c for c in node.children[2:] if isinstance(c, Tree)]
+        rest = node.children[1:]
+        type_ref = None
+        if rest and isinstance(rest[0], Tree) and rest[0].data == "qualname":
+            type_ref = _qualname_str(rest[0])
+            rest = rest[1:]
+        body = [c for c in rest if isinstance(c, Tree)]
         elem = model.add_element("PartUsage", name, scope_path)
         if container_id:
             model.add_relation(container_id, elem.id, "CONTAINS")
-        target = model.resolve(type_ref.split("."), scope_path)
-        if target:
-            model.add_relation(elem.id, target, "TYPED_BY")
+        if type_ref:
+            target = model.resolve(type_ref.split("."), scope_path)
+            if target:
+                model.add_relation(elem.id, target, "TYPED_BY")
         _walk_members(body, model, scope_path + [name], elem.id)
 
     elif node.data == "port_usage":
