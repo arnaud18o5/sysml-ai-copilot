@@ -42,20 +42,20 @@ def run(nl_query, max_hops=3, top_k=3):
     with driver.session() as session:
         candidates = resolve_element(session, nl_query, top_k=top_k)
         if not candidates:
-            print("Aucun élément trouvé.")
+            print("No element found.")
             return
         best = candidates[0]
         print(
-            f"Élément résolu : {best['qualified_name']} "
+            f"Resolved element: {best['qualified_name']} "
             f"({best['kind']}, score={best['score']:.3f})"
         )
         if len(candidates) > 1:
-            print("Autres candidats :")
+            print("Other candidates:")
             for c in candidates[1:]:
                 print(f"  - {c['qualified_name']} (score={c['score']:.3f})")
 
         impacted = impact_analysis(session, best["id"], max_hops=max_hops)
-        print(f"\nAnalyse d'impact ({len(impacted)} élément(s) atteint(s), {max_hops} hop(s) max) :")
+        print(f"\nImpact analysis ({len(impacted)} element(s) reached, {max_hops} hop(s) max):")
         for item in impacted:
             print(f"  [{item['distance']}] {item['qualified_name']} ({item['kind']})")
     driver.close()
@@ -64,30 +64,30 @@ def run(nl_query, max_hops=3, top_k=3):
 def build_arg_parser():
     parser = argparse.ArgumentParser(
         prog="python -m sysml_copilot.query",
-        description="Résout une question en langage naturel vers un élément du modèle "
-        "puis en analyse l'impact par traversée du graphe.",
+        description="Resolves a natural-language question to a model element "
+        "then analyzes its impact by traversing the graph.",
     )
     parser.add_argument(
         "--top-k",
         type=int,
         default=3,
-        help="Nombre de candidats à résoudre par recherche vectorielle (défaut : 3).",
+        help="Number of candidates to resolve via vector search (default: 3).",
     )
     parser.add_argument(
         "--max-hops",
         type=int,
         default=3,
-        help="Profondeur maximale de traversée pour l'analyse d'impact (défaut : 3).",
+        help="Maximum traversal depth for impact analysis (default: 3).",
     )
     parser.add_argument(
         "query",
         nargs=argparse.REMAINDER,
-        help="Question en langage naturel (les options doivent la précéder).",
+        help="Natural-language question (options must precede it).",
     )
     return parser
 
 
 if __name__ == "__main__":
     args = build_arg_parser().parse_args()
-    query = " ".join(args.query) or "quel est l'impact de la pompe à carburant ?"
+    query = " ".join(args.query) or "what is the impact of the fuel pump?"
     run(query, max_hops=args.max_hops, top_k=args.top_k)

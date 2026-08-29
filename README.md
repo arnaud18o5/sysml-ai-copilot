@@ -4,7 +4,7 @@ An AI copilot prototype for analyzing SysML v2 models: parse the textual notatio
 
 ## Architecture
 
-- **Parser** — a Lark grammar for a subset of the SysML v2 textual notation (`package`, `part def`, `port def`, part/port usages, `connect`, `requirement def`, `satisfy`). It extracts typed elements and relations, resolving references (including through feature typing, e.g. `tank.fuelOut` where `tank` is typed by `FuelTank`).
+- **Parser** — a Lark grammar for a subset of the SysML v2 textual notation (`package`, `part def`, `port def`, `attribute def`, part/port/attribute usages, `connect`, `requirement def`, `satisfy`). It extracts typed elements and relations, resolving references (including through feature typing, e.g. `tank.fuelOut` where `tank` is typed by `FuelTank`).
 - **Graph store (Neo4j)** — elements become `:Element` nodes; relations become typed edges (`CONTAINS`, `TYPED_BY`, `CONNECTS_TO`, `SATISFIES`). Graph traversal answers structural questions like impact analysis.
 - **Vector search (Neo4j native vector index)** — each element gets an embedding (name, kind, doc) via [fastembed](https://github.com/qdrant/fastembed) (local, no API key required). Natural-language queries are embedded and matched against this index to resolve "which element is the user talking about" before the graph traversal runs.
 
@@ -62,7 +62,7 @@ data/
 
 ## Known limitations
 
-- Only a subset of SysML v2 textual notation is supported — no imports, no feature specialization/redefinition, no typed attributes yet.
+- Only a subset of SysML v2 textual notation is supported — no imports, no feature specialization/redefinition.
 - Reference resolution is a simplified heuristic, not a full implementation of the SysML v2 metamodel's scoping rules.
 - Impact analysis traverses `CONNECTS_TO`, `TYPED_BY`, and `SATISFIES` edges but intentionally excludes `CONTAINS`, to avoid pulling in unrelated siblings under the same package — this means nested features of the queried element (e.g. its ports) aren't reached unless they're queried directly.
 - Retrieval quality depends heavily on the richness of element `doc` text and on the embedding model matching the query language.
