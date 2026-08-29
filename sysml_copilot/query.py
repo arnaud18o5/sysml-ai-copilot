@@ -28,7 +28,7 @@ def impact_analysis(session, element_id, max_hops=3):
     # f-string below, rather than interpolated as-is.
     if isinstance(max_hops, bool) or not isinstance(max_hops, int) or not (1 <= max_hops <= MAX_HOPS_LIMIT):
         raise ValueError(
-            f"max_hops must be an integer between 1 and {MAX_HOPS_LIMIT} (got {max_hops!r})"
+            f"max_hops doit être un entier compris entre 1 et {MAX_HOPS_LIMIT} (reçu : {max_hops!r})"
         )
     result = session.run(
         f"""
@@ -50,25 +50,25 @@ def run(nl_query, max_hops=3, top_k=3):
     with driver.session() as session:
         candidates = resolve_element(session, nl_query, top_k=top_k)
         if not candidates:
-            print("No element found.")
+            print("Aucun élément trouvé.")
             return
         best = candidates[0]
         print(
-            f"Resolved element: {best['qualified_name']} "
+            f"Élément résolu : {best['qualified_name']} "
             f"({best['kind']}, score={best['score']:.3f})"
         )
         if len(candidates) > 1:
-            print("Other candidates:")
+            print("Autres candidats :")
             for c in candidates[1:]:
                 print(f"  - {c['qualified_name']} (score={c['score']:.3f})")
 
         impacted = impact_analysis(session, best["id"], max_hops=max_hops)
-        print(f"\nImpact analysis ({len(impacted)} element(s) reached, {max_hops} hop(s) max):")
+        print(f"\nAnalyse d'impact ({len(impacted)} élément(s) atteint(s), {max_hops} hop(s) max) :")
         for item in impacted:
             print(f"  [{item['distance']}] {item['qualified_name']} ({item['kind']})")
     driver.close()
 
 
 if __name__ == "__main__":
-    query = " ".join(sys.argv[1:]) or "what is the impact of the fuel pump?"
+    query = " ".join(sys.argv[1:]) or "quel est l'impact de la pompe à carburant ?"
     run(query)
