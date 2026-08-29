@@ -81,7 +81,7 @@ def ingest_file(path):
             load_elements(session, elements, embeddings)
             load_relations(session, relations)
 
-    print(f"{len(elements)} éléments et {len(relations)} relations chargés depuis {path}")
+    print(f"{len(elements)} elements and {len(relations)} relations loaded from {path}")
 
 
 if __name__ == "__main__":
