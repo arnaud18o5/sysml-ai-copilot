@@ -2,12 +2,14 @@
 
 ## Workflow
 
-`main` is protected: no direct pushes. All changes go through a branch and a pull request.
+`main` is protected: no direct pushes, and merging requires 1 approving review. All changes go through a branch and a pull request.
 
 1. Create a branch off `main` using the naming convention below.
 2. Commit using Conventional Commits (enforced locally by a git hook, see below).
 3. Open a PR into `main`. The PR title must also follow Conventional Commits — it's linted in CI and becomes the squash-merge commit message.
 4. Get it reviewed and merged (squash merge).
+
+**Note for coding agents working in this repo:** open the PR, but do not merge it — leave it for @arnaud18o5 to review. GitHub doesn't allow a PR author to approve their own PR, and PRs opened via `gh pr create` under the maintainer's authenticated account count as authored by them, so a required review can only come from an actual human look at the diff. `enforce_admins` is intentionally off so the maintainer can merge via the admin bypass after reviewing, without needing a second collaborator account — but that bypass is for them to use, not the agent.
 
 ## Branch naming
 
