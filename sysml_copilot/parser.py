@@ -40,7 +40,7 @@ GRAMMAR = r"""
 
     connect_stmt: "connect" qualname "to" qualname ";"
 
-    requirement_def: "requirement" "def" NAME "{" doc_stmt? "}"
+    requirement_def: "requirement" "def" NAME ("{" doc_stmt? "}" | ";")
     doc_stmt: "doc" DOC_COMMENT
 
     satisfy_stmt: "satisfy" NAME "by" qualname ";"
