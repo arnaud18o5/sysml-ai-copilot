@@ -2,17 +2,22 @@ package VehicleFuelSystem {
 
     port def FuelPort;
 
+    attribute def Pressure;
+
     part def Engine {
         port fuelIn : FuelPort;
     }
 
     part def FuelTank {
         port fuelOut : FuelPort;
+        attribute capacity : Real = 60;
+        attribute fuelType : String = "diesel";
     }
 
     part def FuelPump {
         port fuelIn : FuelPort;
         port fuelOut : FuelPort;
+        attribute outputPressure : Pressure = 3.5;
     }
 
     part def Vehicle {
