@@ -6,6 +6,12 @@ from . import config
 from .embeddings import embed_texts, element_text
 from .parser import SysmlSyntaxError, parse_sysml
 
+# Relationship types the parser is known to emit. Cypher relationship types
+# can't be parameterized, so `load_relations` interpolates this value into
+# the query string directly — validate against this allow-list first rather
+# than trusting `relation["type"]` unchecked.
+KNOWN_RELATIONSHIP_TYPES = {"CONTAINS", "TYPED_BY", "CONNECTS_TO", "SATISFIES"}
+
 
 def get_driver():
     return GraphDatabase.driver(
@@ -57,6 +63,8 @@ def load_elements(session, elements, embeddings):
 
 def load_relations(session, relations):
     for relation in relations:
+        if relation["type"] not in KNOWN_RELATIONSHIP_TYPES:
+            raise ValueError(f"Unknown relation type: {relation['type']!r}")
         session.run(
             f"""
             MATCH (a:Element {{id: $source}})
