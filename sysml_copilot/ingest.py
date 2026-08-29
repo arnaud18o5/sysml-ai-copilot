@@ -4,7 +4,7 @@ from neo4j import GraphDatabase
 
 from . import config
 from .embeddings import embed_texts, element_text
-from .parser import parse_sysml
+from .parser import SysmlSyntaxError, parse_sysml
 
 
 def get_driver():
@@ -42,6 +42,7 @@ def load_elements(session, elements, embeddings):
                 e.name = $name,
                 e.qualified_name = $qualified_name,
                 e.doc = $doc,
+                e.value = $value,
                 e.embedding = $embedding
             """,
             id=element["id"],
@@ -49,6 +50,7 @@ def load_elements(session, elements, embeddings):
             name=element["name"],
             qualified_name=element["qualified_name"],
             doc=element.get("doc"),
+            value=element.get("value"),
             embedding=embedding,
         )
 
@@ -71,10 +73,21 @@ def ingest_file(path):
         with open(path) as f:
             text = f.read()
     except OSError as e:
-        print(f"Impossible de lire le fichier {path} : {e.strerror or e}")
+        print(f"Could not read file {path}: {e.strerror or e}")
         sys.exit(1)
 
-    elements, relations = parse_sysml(text)
+    try:
+        elements, relations = parse_sysml(text)
+    except SysmlSyntaxError as exc:
+        if isinstance(exc.line, int) and exc.line > 0:
+            print(f"SysML v2 syntax error in {path}, at line {exc.line}, column {exc.column}:")
+        else:
+            print(f"SysML v2 syntax error in {path}:")
+        if exc.context:
+            print(exc.context)
+        else:
+            print(str(exc))
+        sys.exit(1)
 
     texts = [element_text(e) for e in elements]
     embeddings = embed_texts(texts)
@@ -87,7 +100,7 @@ def ingest_file(path):
         load_relations(session, relations)
     driver.close()
 
-    print(f"{len(elements)} éléments et {len(relations)} relations chargés depuis {path}")
+    print(f"{len(elements)} elements and {len(relations)} relations loaded from {path}")
 
 
 if __name__ == "__main__":
