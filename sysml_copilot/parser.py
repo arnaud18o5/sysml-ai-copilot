@@ -6,6 +6,7 @@ ready to load into a graph.
 """
 
 from lark import Lark, Tree, Token
+from lark.exceptions import UnexpectedInput
 
 GRAMMAR = r"""
     start: package
@@ -14,8 +15,10 @@ GRAMMAR = r"""
 
     member: part_def
           | port_def
+          | attribute_def
           | part_usage
           | port_usage
+          | attribute_usage
           | connect_stmt
           | requirement_def
           | satisfy_stmt
@@ -27,9 +30,13 @@ GRAMMAR = r"""
 
     part_def: "part" "def" NAME ("{" member* "}" | ";")
     port_def: "port" "def" NAME ("{" member* "}" | ";")
+    attribute_def: "attribute" "def" NAME ("{" member* "}" | ";")
 
     part_usage: "part" NAME ":" qualname ("{" member* "}" | ";")
     port_usage: "port" NAME ":" qualname ";"
+    attribute_usage: "attribute" NAME ":" qualname ("=" attr_value)? ";"
+
+    attr_value: SIGNED_NUMBER | ESCAPED_STRING
 
     connect_stmt: "connect" qualname "to" qualname ";"
 
@@ -44,6 +51,8 @@ GRAMMAR = r"""
     DOC_COMMENT: /\/\*.*?\*\//s
 
     %import common.WS
+    %import common.SIGNED_NUMBER
+    %import common.ESCAPED_STRING
     %ignore WS
     %ignore /\/\/[^\n]*/
     %ignore DOC_COMMENT
@@ -53,12 +62,13 @@ _parser = Lark(GRAMMAR, parser="earley")
 
 
 class Element:
-    def __init__(self, id_, kind, name, qualified_name, doc=None):
+    def __init__(self, id_, kind, name, qualified_name, doc=None, value=None):
         self.id = id_
         self.kind = kind
         self.name = name
         self.qualified_name = qualified_name
         self.doc = doc
+        self.value = value
 
     def to_dict(self):
         return {
@@ -67,7 +77,23 @@ class Element:
             "name": self.name,
             "qualified_name": self.qualified_name,
             "doc": self.doc,
+            "value": self.value,
         }
+
+
+class SysmlSyntaxError(Exception):
+    """Raised when the input text isn't valid SysML v2 (subset) syntax.
+
+    Wraps the underlying Lark parsing error with the offending line/column
+    and a source snippet exposed as attributes, so callers (e.g. `ingest.py`)
+    can present a diagnosable message instead of a raw Lark traceback.
+    """
+
+    def __init__(self, message, line=None, column=None, context=None):
+        super().__init__(message)
+        self.line = line
+        self.column = column
+        self.context = context
 
 
 class Relation:
@@ -100,6 +126,14 @@ def _import_path_str(import_path_tree):
     return "::".join(str(tok) for tok in import_path_tree.children)
 
 
+def _attr_value_str(token):
+    """Render an attr_value token as a plain string, stripping string quotes."""
+    raw = str(token)
+    if raw.startswith('"') and raw.endswith('"'):
+        return raw[1:-1]
+    return raw
+
+
 class _Model:
     def __init__(self):
         self.elements = []
@@ -107,9 +141,9 @@ class _Model:
         self.by_qualified_name = {}
         self._typed_by = {}
 
-    def add_element(self, kind, name, scope_path, doc=None):
+    def add_element(self, kind, name, scope_path, doc=None, value=None):
         qualified_name = ".".join(scope_path + [name])
-        elem = Element(qualified_name, kind, name, qualified_name, doc)
+        elem = Element(qualified_name, kind, name, qualified_name, doc, value)
         self.elements.append(elem)
         self.by_qualified_name[qualified_name] = elem
         return elem
@@ -205,6 +239,28 @@ def _walk_node(node, model, scope_path, container_id):
         if target:
             model.add_relation(elem.id, target, "TYPED_BY")
 
+    elif node.data == "attribute_def":
+        name = _clean_name(node.children[0])
+        body = [c for c in node.children[1:] if isinstance(c, Tree)]
+        elem = model.add_element("AttributeDefinition", name, scope_path)
+        if container_id:
+            model.add_relation(container_id, elem.id, "CONTAINS")
+        _walk_members(body, model, scope_path + [name], elem.id)
+
+    elif node.data == "attribute_usage":
+        name = _clean_name(node.children[0])
+        type_ref = _qualname_str(node.children[1])
+        value = None
+        for c in node.children[2:]:
+            if isinstance(c, Tree) and c.data == "attr_value":
+                value = _attr_value_str(c.children[0])
+        elem = model.add_element("AttributeUsage", name, scope_path, value=value)
+        if container_id:
+            model.add_relation(container_id, elem.id, "CONTAINS")
+        target = model.resolve(type_ref.split("."), scope_path)
+        if target:
+            model.add_relation(elem.id, target, "TYPED_BY")
+
     elif node.data == "connect_stmt":
         left = _qualname_str(node.children[0]).split(".")
         right = _qualname_str(node.children[1]).split(".")
@@ -240,7 +296,13 @@ def _walk_node(node, model, scope_path, container_id):
 
 
 def parse_sysml(text):
-    tree = _parser.parse(text)
+    try:
+        tree = _parser.parse(text)
+    except UnexpectedInput as exc:
+        line = getattr(exc, "line", None)
+        column = getattr(exc, "column", None)
+        context = exc.get_context(text)
+        raise SysmlSyntaxError(str(exc), line=line, column=column, context=context) from exc
     package_node = tree.children[0]
     package_name = _clean_name(package_node.children[0])
     members = [c for c in package_node.children[1:] if isinstance(c, Tree)]
