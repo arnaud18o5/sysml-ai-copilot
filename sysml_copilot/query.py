@@ -4,6 +4,7 @@ from .embeddings import embed_texts
 from .ingest import get_driver
 
 IMPACT_RELATIONSHIP_TYPES = "CONNECTS_TO|TYPED_BY|SATISFIES"
+MAX_HOPS_LIMIT = 10
 
 
 def resolve_element(session, nl_query, top_k=3):
@@ -22,6 +23,13 @@ def resolve_element(session, nl_query, top_k=3):
 
 
 def impact_analysis(session, element_id, max_hops=3):
+    # max_hops can't be parameterized (Cypher doesn't allow binding the bounds of a
+    # variable-length path pattern), so it's validated here before landing in the
+    # f-string below, rather than interpolated as-is.
+    if isinstance(max_hops, bool) or not isinstance(max_hops, int) or not (1 <= max_hops <= MAX_HOPS_LIMIT):
+        raise ValueError(
+            f"max_hops must be an integer between 1 and {MAX_HOPS_LIMIT} (got {max_hops!r})"
+        )
     result = session.run(
         f"""
         MATCH path = (start:Element {{id: $id}})
@@ -62,5 +70,5 @@ def run(nl_query, max_hops=3, top_k=3):
 
 
 if __name__ == "__main__":
-    query = " ".join(sys.argv[1:]) or "quel est l'impact de la pompe à carburant ?"
+    query = " ".join(sys.argv[1:]) or "what is the impact of the fuel pump?"
     run(query)
