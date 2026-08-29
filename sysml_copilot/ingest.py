@@ -69,8 +69,13 @@ def load_relations(session, relations):
 
 
 def ingest_file(path):
-    with open(path) as f:
-        text = f.read()
+    try:
+        with open(path) as f:
+            text = f.read()
+    except OSError as e:
+        print(f"Could not read file {path}: {e.strerror or e}")
+        sys.exit(1)
+
     try:
         elements, relations = parse_sysml(text)
     except SysmlSyntaxError as exc:

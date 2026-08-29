@@ -62,5 +62,5 @@ def run(nl_query, max_hops=3, top_k=3):
 
 
 if __name__ == "__main__":
-    query = " ".join(sys.argv[1:]) or "quel est l'impact de la pompe à carburant ?"
+    query = " ".join(sys.argv[1:]) or "what is the impact of the fuel pump?"
     run(query)
