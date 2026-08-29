@@ -25,7 +25,7 @@ GRAMMAR = r"""
           | import_stmt
 
     import_stmt: "private"? "import" import_path ";"
-    import_path: NAME ("::" (NAME | WILDCARD))*
+    import_path: WILDCARD | NAME ("::" (NAME | WILDCARD))*
     WILDCARD: "**" | "*"
 
     part_def: "part" "def" NAME ("{" member* "}" | ";")
