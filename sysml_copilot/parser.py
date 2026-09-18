@@ -123,7 +123,7 @@ def _qualname_str(qualname_tree):
 
 
 def _import_path_str(import_path_tree):
-    return "::".join(str(tok) for tok in import_path_tree.children)
+    return "::".join(_clean_name(tok) for tok in import_path_tree.children)
 
 
 def _attr_value_str(token):
