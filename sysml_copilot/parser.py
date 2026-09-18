@@ -40,7 +40,7 @@ GRAMMAR = r"""
 
     connect_stmt: "connect" qualname "to" qualname ";"
 
-    requirement_def: "requirement" "def" NAME "{" doc_stmt? "}"
+    requirement_def: "requirement" "def" NAME "{" (member | doc_stmt)* "}"
     doc_stmt: "doc" DOC_COMMENT
 
     satisfy_stmt: "satisfy" NAME "by" qualname ";"
@@ -271,14 +271,17 @@ def _walk_node(node, model, scope_path, container_id):
 
     elif node.data == "requirement_def":
         name = _clean_name(node.children[0])
+        body = [c for c in node.children[1:] if isinstance(c, Tree)]
         doc = None
-        for c in node.children[1:]:
-            if isinstance(c, Tree) and c.data == "doc_stmt":
+        for c in body:
+            if c.data == "doc_stmt":
                 raw = str(c.children[0])
                 doc = raw[2:-2].strip()
         elem = model.add_element("RequirementDefinition", name, scope_path, doc=doc)
         if container_id:
             model.add_relation(container_id, elem.id, "CONTAINS")
+        nested_members = [c for c in body if c.data == "member"]
+        _walk_members(nested_members, model, scope_path + [name], elem.id)
 
     elif node.data == "satisfy_stmt":
         req_name = _clean_name(node.children[0])
