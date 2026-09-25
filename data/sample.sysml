@@ -29,6 +29,10 @@ package VehicleFuelSystem {
         connect pump.fuelOut to engine.fuelIn;
     }
 
+    part businessCase {
+        part lead : Engine;
+    }
+
     requirement def FuelDeliveryRequirement {
         doc /* The system shall deliver fuel to the engine within 2 seconds of ignition. */
     }
