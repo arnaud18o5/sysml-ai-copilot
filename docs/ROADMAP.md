@@ -19,7 +19,7 @@ Every phase has measurable exit criteria. Three numbers are tracked from the sta
 |---|---|---|
 | OMG SysML v2 release files that parse / round-trip / resolve | `tools/conformance.py report` | 17 / 17 / 5 of 310 (5.5% / 5.5% / 1.6%) |
 | Agent task success, small model | `evals/run.py --model claude-haiku-5-5` | not measured yet (needs an API key) |
-| Agent task suite size | `evals/tasks.json` | 13 tasks, all solvable by their reference solution |
+| Agent task suite size | `evals/tasks.json` | 14 tasks, all solvable by their reference solution |
 
 Both harnesses are ratchets.
 - **Conformance:** the baseline only goes up, and CI fails on any regression.
@@ -31,6 +31,7 @@ Both harnesses are ratchets.
 - Deterministic operations, kept consistent across edits: rename and move rewrite references, cascade delete, atomic batches, undo/redo, conflict detection when several processes share the files.
 - MCP server (stdio and HTTP), JSON CLI, and a web workbench with live refresh. Diagrams: internal structure and definitions; tables: requirements; views: impact and validation.
 - Conformance harness, agent eval harness, CI, container image.
+- Multilingual semantic search (`find_elements`) with a local embedding model. The former Neo4j pipeline was removed, so there is no database to run.
 
 ## Phase 1: Language coverage (the critical path)
 

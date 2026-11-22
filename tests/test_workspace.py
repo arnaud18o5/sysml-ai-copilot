@@ -1,9 +1,6 @@
-from sysml_copilot.parser import SysmlSemanticError, parse_sysml
 from sysml_copilot.workspace import Workspace
 
 from .conftest import SAMPLE
-
-import pytest
 
 
 def codes(ws, severity=None):
@@ -92,17 +89,3 @@ def test_typing_checks_and_cycles():
 def test_duplicates_are_reported_not_silently_merged():
     ws = Workspace.from_text("package P { part def A; part def A; }")
     assert "duplicate_name" in codes(ws, "error")
-    with pytest.raises(SysmlSemanticError):
-        parse_sysml("package P { part def A; part def A; }")
-
-
-def test_legacy_flat_api():
-    elements, relations = parse_sysml(open(SAMPLE, encoding="utf-8").read())
-    ids = {e["id"] for e in elements}
-    assert "VehicleFuelSystem.Vehicle.pump" in ids
-    pump = next(e for e in elements if e["id"] == "VehicleFuelSystem.FuelTank.capacity")
-    assert pump["value"] == "60"
-    assert {"source": "VehicleFuelSystem.Vehicle.pump",
-            "target": "VehicleFuelSystem.FuelDeliveryRequirement", "type": "SATISFIES"} in relations
-    # every relation endpoint is a loaded element (library types are not exported)
-    assert all(r["source"] in ids and r["target"] in ids for r in relations)

@@ -11,7 +11,7 @@ On top of it, the project provides:
   - an **MCP server** (`mbse-mcp`), so an agent (including a small model) can model through typed tools instead of writing text;
   - a **CLI** (`mbse`) with JSON in and out;
   - a **local web workbench** (`mbse serve`): model browser, internal-structure and definition diagrams, requirements table, impact analysis, validation and editable properties.
-- an optional **Neo4j + vector search** pipeline for natural-language questions (`ingest` / `query`).
+- **semantic search** by meaning, in any language (`find_elements`, e.g. « ce qui alimente le moteur »), with a local embedding model and no API key.
 
 The design goal: a large model *could* edit SysML text directly, but a small one needs guard rails. Every operation either applies exactly what was asked and reports what changed, or refuses with a structured error (`code`, `message`, `suggestions`) and leaves the model untouched.
 
@@ -19,7 +19,7 @@ The design goal: a large model *could* edit SysML text directly, but a small one
 
 ```bash
 python3 -m venv venv
-venv/bin/pip install -e ".[mcp,dev]"      # add ",graph" for the Neo4j pipeline
+venv/bin/pip install -e ".[mcp,semantic,dev]"
 
 venv/bin/mbse -m data/ check              # validate (non-zero exit on errors, CI friendly)
 venv/bin/mbse -m data/ serve              # web workbench on http://127.0.0.1:8765
@@ -74,6 +74,13 @@ Arguments are `key=value` pairs (values parsed as JSON when possible) or a singl
 - `apply_batch` is all-or-nothing. `add_from_text` is rejected if it introduces validation errors.
 - Every change can be undone, and `diff` shows unsaved changes.
 
+**Search**: `find_elements` combines a lexical match on names (camelCase aware) and doc words with a semantic match. The semantic match embeds each element's label (name, kind, type) and its doc with a local multilingual model (fastembed, `paraphrase-multilingual-MiniLM-L12-v2`, about 220 MB, downloaded from Hugging Face on first use).
+- An exact name always ranks first.
+- `mode` can force `lexical` or `semantic`.
+- Without the `semantic` extra, or without access to the model, `auto` mode falls back to lexical and says so.
+
+Settings: `MBSE_SEMANTIC=off` (auto mode stays lexical), `MBSE_EMBEDDING_MODEL`, `MBSE_EMBEDDING_CACHE_DIR`, `MBSE_MIN_SEMANTIC_SCORE`. The web search box runs a semantic search on Enter.
+
 **Derived relations**: `CONTAINS`, `TYPED_BY`, `SPECIALIZES` (definitions), `SUBSETS` / `REDEFINES` (usages), `CONNECTS_TO`, `SATISFIES`, `ALLOCATES`. `impact_analysis` follows all but `CONTAINS`. By default it follows them in the *dependents* direction ("what is affected if X changes") and explains every result with its relation chain.
 
 ## Supported SysML v2 subset
@@ -119,9 +126,8 @@ sysml_copilot/
   mcp_server.py   MCP server (mbse-mcp)
   cli.py          Command line (mbse)
   web/            Local web workbench (mbse serve)
-  parser.py       Legacy flat (elements, relations) view used by ingest.py
-  ingest.py       Optional: load into Neo4j with embeddings
-  query.py        Optional: natural-language impact analysis via vector search
+  semantic.py     Semantic search: element descriptions, local embeddings, cache
+  config.py       Embedding model and search settings (env overridable)
 tests/            pytest suite (parser, resolution, operations, CLI, MCP, web API, evals)
 tools/conformance.py   OMG SysML v2 release conformance harness (+ baseline)
 evals/            Agent eval harness: tasks, starting models, runner
@@ -132,8 +138,8 @@ data/sample.sysml Example model (vehicle fuel system)
 ## Deployment
 
 ```bash
-docker compose --profile workbench up -d --build      # web on :8765, MCP (HTTP) on :8766/mcp
-MODELS_DIR=/path/to/model-repo docker compose --profile workbench up -d
+docker compose up -d --build                          # web on :8765, MCP (HTTP) on :8766/mcp
+MODELS_DIR=/path/to/model-repo docker compose up -d
 ```
 
 The web workbench and the MCP server are separate processes working on the same files. Each one picks up changes made by the other, or by a `git pull`. A session with unsaved changes refuses writes with a `conflict` error instead of overwriting them. The UI refreshes live, so you can watch an agent build the model.
@@ -153,17 +159,6 @@ There is no authentication yet: ports are bound to `127.0.0.1`. Put a reverse pr
   ```
 
 The plan towards an enterprise-ready tool, with exit criteria per phase, is in [docs/ROADMAP.md](docs/ROADMAP.md).
-
-## Optional: Neo4j + natural-language queries
-
-```bash
-venv/bin/pip install -e ".[graph]"
-docker compose up -d neo4j
-venv/bin/python -m sysml_copilot.ingest data/sample.sysml
-venv/bin/python -m sysml_copilot.query "what is the impact of the fuel pump?"
-```
-
-Neo4j browser: `http://localhost:7474` (`neo4j` / `password123`, see `docker-compose.yml`). Embeddings are local ([fastembed](https://github.com/qdrant/fastembed), multilingual model, no API key).
 
 ## Development
 

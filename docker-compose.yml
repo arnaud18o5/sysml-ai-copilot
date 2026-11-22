@@ -1,3 +1,4 @@
+# docker compose up -d --build
 services:
   # Web workbench on http://localhost:8765, editing the models in ./data
   # (set MODELS_DIR to point at your own model repository).
@@ -7,9 +8,11 @@ services:
     user: "${UID:-1000}:${GID:-1000}"
     ports:
       - "127.0.0.1:8765:8765"
+    environment:
+      - MBSE_EMBEDDING_CACHE_DIR=/cache
     volumes:
       - ${MODELS_DIR:-./data}:/models
-    profiles: ["workbench"]
+      - embedding_cache:/cache
 
   # MCP server over streamable HTTP on http://localhost:8766/mcp, same models.
   # The workbench and the MCP server pick up each other's changes on disk.
@@ -20,21 +23,11 @@ services:
     command: ["mbse-mcp", "/models", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8766"]
     ports:
       - "127.0.0.1:8766:8766"
+    environment:
+      - MBSE_EMBEDDING_CACHE_DIR=/cache
     volumes:
       - ${MODELS_DIR:-./data}:/models
-    profiles: ["workbench"]
-
-  # Optional: graph database for the natural-language query pipeline.
-  neo4j:
-    image: neo4j:5
-    container_name: sysml-copilot-neo4j
-    ports:
-      - "7474:7474"
-      - "7687:7687"
-    environment:
-      - NEO4J_AUTH=neo4j/password123
-    volumes:
-      - neo4j_data:/data
+      - embedding_cache:/cache
 
 volumes:
-  neo4j_data:
+  embedding_cache:

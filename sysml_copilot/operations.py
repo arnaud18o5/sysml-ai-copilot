@@ -50,6 +50,8 @@ from .syntax import (
     serialize_node,
     element_header,
 )
+from . import config
+from .semantic import SemanticIndex, SemanticUnavailable
 from .workspace import HOP_INHERITED, HOP_MEMBER, HOP_SCOPE, Workspace, _expand
 
 # Relation types followed by impact analysis. CONTAINS is deliberately
@@ -166,8 +168,10 @@ def _value_from_input(value, value_kind=None) -> Value:
 class ModelService:
     """Holds a workspace and exposes deterministic operations on it."""
 
-    def __init__(self, paths=None, autosave=False, workspace: Workspace | None = None):
+    def __init__(self, paths=None, autosave=False, workspace: Workspace | None = None,
+                 semantic: SemanticIndex | None = None):
         self.paths = list(paths or [])
+        self.semantic = semantic or SemanticIndex()
         self.autosave = autosave
         if workspace is not None:
             self.ws = workspace
@@ -613,17 +617,55 @@ class ModelService:
                                "roots": [build(m, depth - 1) for m in doc.members if isinstance(m, Element)]}
                               for doc in self.ws.documents]}
 
-    def find_elements(self, query, kind=None, limit=10) -> dict:
-        """Deterministic fuzzy search over names (camelCase-aware) and doc text."""
+    def find_elements(self, query, kind=None, limit=10, mode="auto") -> dict:
+        """Search elements by meaning and by name.
+
+        mode: "lexical" (names camelCase-aware + doc words), "semantic" (multilingual
+        embeddings of kind/name/owner/type/doc: 'ce qui alimente le moteur' finds FuelPump),
+        or "auto" (both, ranked by the best of the two scores - an exact name match always
+        ranks first; lexical only if the embedding model is unavailable)."""
         if not isinstance(query, str) or not query.strip():
             raise OpError("invalid_argument", "query must be a non-empty string")
+        if mode not in ("auto", "lexical", "semantic"):
+            raise OpError("invalid_argument", "mode must be 'auto', 'lexical' or 'semantic'")
+        if not isinstance(limit, int) or isinstance(limit, bool) or not 1 <= limit <= 100:
+            raise OpError("invalid_argument", "limit must be an integer between 1 and 100")
         kw = normalize_kind(kind) if kind else None
+        pool = [el for el in self.ws.elements(include_library=False)
+                if not kw or (el.keyword, el.is_definition) == kw]
+        scores: dict[int, dict] = {}
+        if mode in ("auto", "lexical"):
+            for score, el in self._lexical_scores(query, pool):
+                scores.setdefault(id(el), {"el": el})["lexical_score"] = score
+        used = "lexical"
+        note = None
+        if mode in ("auto", "semantic") and (mode == "semantic" or config.SEMANTIC_SEARCH != "off"):
+            try:
+                for cos, el in self.semantic.search(self.ws, query, pool, limit=max(limit, 20)):
+                    scores.setdefault(id(el), {"el": el})["semantic_score"] = round(cos, 3)
+                used = "semantic" if mode == "semantic" else "hybrid"
+            except SemanticUnavailable as exc:
+                if mode == "semantic":
+                    raise OpError("semantic_unavailable", str(exc)) from exc
+                note = f"semantic search unavailable, lexical results only: {exc}"
+        rows = []
+        for entry in scores.values():
+            el = entry.pop("el")
+            # Semantic similarity maps to at most 95, so an exact name match (100) always ranks first.
+            best = max(entry.get("lexical_score", 0.0), 95.0 * entry.get("semantic_score", 0.0))
+            rows.append((round(best, 1), self.ws.id_of(el), el, entry))
+        rows.sort(key=lambda t: (-t[0], t[1]))
+        out = {"mode": used, "results": [{**self._brief(el), "score": s, **extra}
+                                         for s, _, el, extra in rows[:limit]]}
+        if note:
+            out["note"] = note
+        return out
+
+    def _lexical_scores(self, query, pool):
         q = _normalize_words(query)
         q_tokens = set(q.split())
-        scored = []
-        for el in self.ws.elements(include_library=False):
-            if kw and (el.keyword, el.is_definition) != kw:
-                continue
+        out = []
+        for el in pool:
             name = el.effective_name or ""
             n = _normalize_words(name)
             if name.lower() == query.strip().lower() or n == q:
@@ -643,9 +685,8 @@ class ModelService:
             if q_tokens & {el.keyword, "definition" if el.is_definition else "usage"}:
                 score += 5.0
             if score >= 25:
-                scored.append((round(score, 1), self.ws.id_of(el), el))
-        scored.sort(key=lambda t: (-t[0], t[1]))
-        return {"results": [{**self._brief(el), "score": s} for s, _, el in scored[:limit]]}
+                out.append((round(score, 1), el))
+        return out
 
     def list_relationships(self, element=None, type=None, include_containment=False) -> dict:
         """Derived relations (TYPED_BY, SPECIALIZES, CONNECTS_TO, SATISFIES, ...)."""

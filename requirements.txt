@@ -1,5 +1,5 @@
 lark>=1.1
 mcp>=2.0
-neo4j>=5.20
 fastembed>=0.3
 pytest>=8
+anthropic>=1.0

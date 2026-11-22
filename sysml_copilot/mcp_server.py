@@ -67,11 +67,15 @@ def build_server(service: ModelService):
         return call(service, "get_tree", {"root": root, "depth": depth})
 
     @tool
-    def find_elements(query: Annotated[str, Field(description="Words to search, e.g. 'fuel pump'")],
+    def find_elements(query: Annotated[str, Field(description="Names or a description in any language, e.g. "
+                                                              "'fuel pump' or 'ce qui alimente le moteur'")],
                       kind: Annotated[str | None, Field(description="Optional kind filter, e.g. 'part def'")] = None,
-                      limit: int = 10) -> dict[str, Any]:
-        """Search elements by name (camelCase aware) and documentation. Use it to get exact ids."""
-        return call(service, "find_elements", {"query": query, "kind": kind, "limit": limit})
+                      limit: int = 10,
+                      mode: Annotated[Literal["auto", "lexical", "semantic"],
+                                      Field(description="auto (default): names + meaning; lexical: names/doc words "
+                                                        "only; semantic: meaning only")] = "auto") -> dict[str, Any]:
+        """Find elements by name or by meaning (multilingual). Use it to get exact ids before any other tool."""
+        return call(service, "find_elements", {"query": query, "kind": kind, "limit": limit, "mode": mode})
 
     @tool
     def list_elements(kind: Annotated[str | None, Field(description="Optional kind filter, e.g. 'requirement def'")] = None,
