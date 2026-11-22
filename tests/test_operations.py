@@ -188,3 +188,24 @@ def test_queries(svc):
 def test_unknown_operation():
     r = call(ModelService(), "creat_element", {})
     assert r["error"]["code"] == "unknown_operation" and "create_element" in r["error"]["suggestions"]
+
+
+def test_two_sessions_on_the_same_files(sample_path):
+    """An agent (MCP) and the web UI may edit the same files concurrently."""
+    agent = ModelService([sample_path], autosave=True)
+    ui = ModelService([sample_path], autosave=True)
+    v0 = call(ui, "summary")["version"]
+    ok(call(agent, "create_element", {"kind": "part def", "name": "FromAgent", "owner": PKG}))
+    seen = call(ui, "get_element", {"element": f"{PKG}.FromAgent"})
+    assert seen["ok"] and call(ui, "summary")["version"] > v0
+    ok(call(ui, "create_element", {"kind": "part def", "name": "FromUi", "owner": PKG}))
+    assert call(agent, "get_element", {"element": f"{PKG}.FromUi"})["ok"]
+
+    # unsaved local work + external change -> writes are refused, not silently merged
+    manual = ModelService([sample_path], autosave=False)
+    ok(call(manual, "create_element", {"kind": "part def", "name": "Draft", "owner": PKG}))
+    ok(call(agent, "delete_element", {"element": f"{PKG}.FromUi"}))
+    r = call(manual, "create_element", {"kind": "part def", "name": "Draft2", "owner": PKG})
+    assert r["error"]["code"] == "conflict"
+    ok(call(manual, "reload"))
+    assert call(manual, "get_element", {"element": f"{PKG}.FromUi"})["error"]["code"] == "not_found"

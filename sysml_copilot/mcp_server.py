@@ -193,9 +193,17 @@ def build_server(service: ModelService):
         return call(service, "add_relationship", {"kind": kind, "source": source, "target": target, "owner": owner})
 
     @tool
-    def remove_relationship(kind: Literal["connect", "satisfy", "allocate"], source: str, target: str) -> dict[str, Any]:
-        """Remove a connect, satisfy or allocate statement identified by its endpoints."""
-        return call(service, "remove_relationship", {"kind": kind, "source": source, "target": target})
+    def remove_relationship(kind: Literal["connect", "satisfy", "allocate"] | None = None,
+                            source: str | None = None,
+                            target: str | None = None,
+                            statement: Annotated[str | None, Field(
+                                description="Alternative to kind/source/target: the exact statement text as shown "
+                                            "by validate or get_element, e.g. 'satisfy R by x;'. Use it for "
+                                            "statements whose references are broken")] = None,
+                            owner: OptId = None) -> dict[str, Any]:
+        """Remove a connect, satisfy or allocate statement, by its endpoints or by its exact text."""
+        return call(service, "remove_relationship", {"kind": kind, "source": source, "target": target,
+                                                     "statement": statement, "owner": owner})
 
     @tool
     def add_import(namespace: Id,
@@ -261,9 +269,15 @@ def main(argv=None):
     parser.add_argument("paths", nargs="*", default=["."], help=".sysml files or directories")
     parser.add_argument("--no-autosave", action="store_true", help="keep changes in memory until `save`")
     parser.add_argument("--transport", default="stdio", choices=["stdio", "streamable-http", "sse"])
+    parser.add_argument("--host", default="127.0.0.1", help="HTTP transports only")
+    parser.add_argument("--port", type=int, default=8766, help="HTTP transports only")
     args = parser.parse_args(argv)
     service = ModelService(args.paths, autosave=not args.no_autosave)
-    build_server(service).run(args.transport)
+    server = build_server(service)
+    if args.transport == "stdio":
+        server.run("stdio")
+    else:
+        server.run(args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

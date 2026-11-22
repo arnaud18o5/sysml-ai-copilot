@@ -50,7 +50,7 @@ from .syntax import (
     serialize_node,
     element_header,
 )
-from .workspace import HOP_INHERITED, HOP_MEMBER, HOP_SCOPE, Workspace
+from .workspace import HOP_INHERITED, HOP_MEMBER, HOP_SCOPE, Workspace, _expand
 
 # Relation types followed by impact analysis. CONTAINS is deliberately
 # excluded (see CLAUDE.md): it would flood results with unrelated siblings.
@@ -179,6 +179,61 @@ class ModelService:
         self._redo: list[dict] = []
         self._in_tx = False
         self._disk = {d.path: _read(d.path) for d in self.ws.documents}
+        self._unsaved = False
+        self.version = 0  # bumped on every change of the in-memory model
+        self._stamps = self._file_stamps()
+
+    # ========================================================= disk syncing
+
+    def _tracked_files(self):
+        files = {d.path for d in self.ws.documents if not d.path.startswith("<")}
+        for p in self.paths:
+            if os.path.isdir(p):
+                files.update(_expand(p))
+        return sorted(files)
+
+    def _file_stamps(self):
+        stamps = {}
+        for f in self._tracked_files():
+            try:
+                st = os.stat(f)
+                stamps[f] = (st.st_mtime_ns, st.st_size)
+            except OSError:
+                stamps[f] = None
+        return stamps
+
+    def sync(self, for_write=False):
+        """Pick up changes made to the files by someone else (another process, an
+        editor, `git pull`). Reloads when this service has no unsaved changes;
+        otherwise refuses writes with a `conflict` error."""
+        stamps = self._file_stamps()
+        if stamps == self._stamps:
+            return
+        changed = [f for f in stamps if _read(f) != self._disk.get(f)]
+        if not changed:
+            self._stamps = stamps
+            return
+        if self._unsaved:
+            if for_write:
+                raise OpError("conflict",
+                              f"{len(changed)} file(s) changed on disk while this session has unsaved changes; "
+                              f"call diff to inspect, then reload (discards unsaved changes) or save",
+                              details=changed)
+            return
+        try:
+            files = [f for f in stamps if stamps[f] is not None]
+            ws = Workspace.load(*files) if files else Workspace()
+        except SysmlSyntaxError as exc:
+            if for_write:
+                raise OpError("conflict", f"a file changed on disk and no longer parses: {exc}",
+                              details=exc.to_json()) from exc
+            return
+        self.ws = ws
+        self._disk = {d.path: _read(d.path) for d in ws.documents}
+        self._stamps = stamps
+        self._undo.clear()
+        self._redo.clear()
+        self.version += 1
 
     # ================================================================ helpers
 
@@ -217,6 +272,8 @@ class ModelService:
         if self._snapshot() != snap:
             self._undo.append({"label": label, "snap": snap})
             self._redo.clear()
+            self.version += 1
+            self._unsaved = True
             if self.autosave:
                 result["saved"] = self._save()
         result.setdefault("ok", True)
@@ -396,6 +453,8 @@ class ModelService:
             "validation": self._counts(),
             "can_undo": bool(self._undo),
             "can_redo": bool(self._redo),
+            "unsaved_changes": self._unsaved,
+            "version": self.version,
         }
 
     def _brief(self, el: Element):
@@ -748,6 +807,8 @@ class ModelService:
             "validation": self._counts(),
             "can_undo": bool(self._undo),
             "can_redo": bool(self._redo),
+            "unsaved_changes": self._unsaved,
+            "version": self.version,
         }
 
     def list_kinds(self) -> dict:
@@ -1093,18 +1154,35 @@ class ModelService:
                     out.append(node)
         return out
 
-    def remove_relationship(self, kind, source, target) -> dict:
-        """Remove a connect/satisfy/allocate statement identified by its endpoints."""
+    def remove_relationship(self, kind=None, source=None, target=None, statement=None, owner=None) -> dict:
+        """Remove a connect/satisfy/allocate statement, identified either by `kind` + its
+        endpoints, or by its exact `statement` text (e.g. 'satisfy R by x;', as shown by
+        validate/get_element) - the only way to remove a statement whose references are broken."""
         def run():
-            if kind not in RELATIONSHIP_KINDS:
-                raise OpError("invalid_kind", f"unknown relationship kind '{kind}'", suggestions=list(RELATIONSHIP_KINDS))
-            s = self._resolve_path(source, "source")
-            t = self._resolve_path(target, "target")
-            found = self._find_statements(kind, s, t) or self._find_statements(kind, s, t, loose=True)
-            if not found:
-                raise OpError("not_found", f"no {kind} between {source} and {target}")
+            if statement is not None:
+                text = " ".join(str(statement).split())
+                if not text.endswith(";"):
+                    text += ";"
+                own = self._element(owner, "owner") if owner else None
+                found = [n for n in self.ws.nodes() if isinstance(n, Relationship)
+                         and render_statement(n) == text and (own is None or n.owner is own)]
+                if not found:
+                    near = [render_statement(n) for n in self.ws.nodes() if isinstance(n, Relationship)]
+                    raise OpError("not_found", f"no statement '{text}'",
+                                  suggestions=difflib.get_close_matches(text, near, n=3, cutoff=0.5))
+            else:
+                if kind not in RELATIONSHIP_KINDS:
+                    raise OpError("invalid_kind", f"unknown relationship kind '{kind}'",
+                                  suggestions=list(RELATIONSHIP_KINDS))
+                if not source or not target:
+                    raise OpError("invalid_argument", "give kind + source + target, or statement")
+                s = self._resolve_path(source, "source")
+                t = self._resolve_path(target, "target")
+                found = self._find_statements(kind, s, t) or self._find_statements(kind, s, t, loose=True)
+                if not found:
+                    raise OpError("not_found", f"no {kind} between {source} and {target}")
             if len(found) > 1:
-                raise OpError("ambiguous", "several statements match; use full feature chains",
+                raise OpError("ambiguous", "several statements match; use full feature chains or pass owner",
                               details=[self._statement_json(f) for f in found])
             node = found[0]
             info = self._statement_json(node)
@@ -1112,7 +1190,7 @@ class ModelService:
             container.remove(node)
             self.ws.reindex()
             return {"removed": info}
-        return self._mutate(f"remove {kind}", run)
+        return self._mutate(f"remove {kind or 'statement'}", run)
 
     def add_import(self, namespace, path, visibility=None) -> dict:
         """Add `import <path>;` to a namespace. path like 'ISQ::*' or 'Pkg::Element'."""
@@ -1227,6 +1305,8 @@ class ModelService:
         entry = self._undo.pop()
         self._redo.append({"label": entry["label"], "snap": self._snapshot()})
         self._restore(entry["snap"])
+        self.version += 1
+        self._unsaved = True
         out = {"undone": entry["label"], "validation": self._counts()}
         if self.autosave:
             out["saved"] = self._save()
@@ -1239,6 +1319,8 @@ class ModelService:
         entry = self._redo.pop()
         self._undo.append({"label": entry["label"], "snap": self._snapshot()})
         self._restore(entry["snap"])
+        self.version += 1
+        self._unsaved = True
         out = {"redone": entry["label"], "validation": self._counts()}
         if self.autosave:
             out["saved"] = self._save()
@@ -1254,6 +1336,8 @@ class ModelService:
                     f.write(text)
                 self._disk[d.path] = text
                 written.append(d.path)
+        self._unsaved = False
+        self._stamps = self._file_stamps()
         return written
 
     def save(self) -> dict:
@@ -1278,6 +1362,9 @@ class ModelService:
         self._disk = {d.path: _read(d.path) for d in self.ws.documents}
         self._undo.clear()
         self._redo.clear()
+        self._unsaved = False
+        self._stamps = self._file_stamps()
+        self.version += 1
         return {"reloaded": paths, "validation": self._counts()}
 
 
@@ -1313,6 +1400,8 @@ def call(service: ModelService, op: str, args: dict | None = None) -> dict:
         return {"ok": False, "error": {"code": "unknown_operation", "message": f"unknown operation '{op}'",
                                        "suggestions": close}}
     try:
+        if op != "reload":
+            service.sync(for_write=op in MUTATING_OPERATIONS or op in ("apply_batch", "undo", "redo", "save"))
         result = getattr(service, op)(**(args or {}))
     except OpError as exc:
         return {"ok": False, "error": exc.to_json()}

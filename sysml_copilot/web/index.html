@@ -610,6 +610,15 @@ $("#undo").onclick = doUndo; $("#redo").onclick = doRedo;
 $("#reload").onclick = async () => { await api("reload"); refresh(); };
 $("#vbadge").onclick = () => document.querySelector('#tabs button[data-tab="valid"]').click();
 $("#search").oninput = (ev) => { S.filter = ev.target.value; renderTree(); };
+// Live view: pick up changes made by an agent (MCP), another tab or a git pull.
+setInterval(async () => {
+  if (!S.model || document.hidden) return;
+  const busy = document.activeElement && document.activeElement.closest("#props, #pane") &&
+    ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName);
+  if (busy) return;
+  const r = await api("summary").catch(() => null);
+  if (r && r.ok && r.version !== S.model.version) refresh();
+}, 2000);
 refresh();
 </script>
 </body>
