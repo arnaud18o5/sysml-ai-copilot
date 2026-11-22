@@ -13,7 +13,7 @@
 
 ## How was this tested?
 
-<!-- e.g. ran `python -m sysml_copilot.ingest data/sample.sysml` then a query, added/ran tests -->
+<!-- e.g. added/ran tests, `mbse -m data check`, `tools/conformance.py check`, `evals/run.py --oracle` -->
 
 ## Checklist
 

@@ -1,14 +1,19 @@
 import os
 
-NEO4J_URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-NEO4J_USER = os.environ.get("NEO4J_USER", "neo4j")
-NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password123")
+# Local embedding model used by semantic search (fastembed, no API key).
+# Multilingual on purpose: models are queried in French and English.
+EMBEDDING_MODEL = os.environ.get(
+    "MBSE_EMBEDDING_MODEL", "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+)
 
-EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
-EMBEDDING_DIMENSIONS = 384
+# Minimum cosine similarity for a semantic match to be reported. Below this,
+# results are noise (unrelated elements still score ~0.2-0.3).
+MIN_SEMANTIC_SCORE = float(os.environ.get("MBSE_MIN_SEMANTIC_SCORE", "0.35"))
 
-# Minimum cosine similarity score (from the Neo4j vector index) for a
-# resolved element to be considered a confident match. Below this,
-# query.run() reports no match instead of proceeding on a likely-wrong
-# element.
-MIN_MATCH_SCORE = float(os.environ.get("MIN_MATCH_SCORE", "0.5"))
+# Where downloaded embedding models are cached (fastembed default if unset).
+EMBEDDING_CACHE_DIR = os.environ.get("MBSE_EMBEDDING_CACHE_DIR") or None
+
+# "auto": find_elements(mode="auto") combines lexical and semantic search when
+# the embedding model is available. "off": auto mode stays lexical-only (no
+# model download); mode="semantic" still works when asked for explicitly.
+SEMANTIC_SEARCH = os.environ.get("MBSE_SEMANTIC", "auto")

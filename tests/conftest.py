@@ -1,6 +1,10 @@
 import os
 import shutil
 
+# Tests never download the embedding model: auto search stays lexical unless a
+# test injects an embedder (see test_semantic.py) or opts in explicitly.
+os.environ.setdefault("MBSE_SEMANTIC", "off")
+
 import pytest
 
 from sysml_copilot.operations import ModelService

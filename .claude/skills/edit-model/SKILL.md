@@ -15,7 +15,7 @@ venv/bin/mbse -m data --dry-run <operation> ...      # show the diff, don't save
 ## Workflow
 
 1. **Orient yourself.** Run `summary`, then `get_tree depth=2`.
-2. **Get exact IDs.** Use `find_elements query="..."` or `get_element element=<id>`. Never guess an ID: they are qualified names (`Pkg.Vehicle.engine`; quote odd names: `Pkg.'Fuel tank'`). A port of a part is addressed through the part: `Pkg.Vehicle.tank.fuelOut`.
+2. **Get exact IDs.** Use `find_elements query="..."` (names or a description in any language: it also searches by meaning) or `get_element element=<id>`. Never guess an ID: they are qualified names (`Pkg.Vehicle.engine`; quote odd names: `Pkg.'Fuel tank'`). A port of a part is addressed through the part: `Pkg.Vehicle.tank.fuelOut`.
 3. **Change the model.**
    - `create_element`: `kind` is `"part def"` / `"part"` / `"port def"` / `"port"` / `"requirement def"` / `"package"`… (see `list_kinds`), with `owner`, and optional `type`, `value`, `multiplicity`, `direction`, `doc` and `specializes`.
    - `update_element`: renames rewrite every reference. Use `clear=[...]` to remove properties.

@@ -59,6 +59,24 @@
       ]
     },
     {
+      "id": "q-semantic-lookup",
+      "category": "query",
+      "model": "data/sample.sysml",
+      "prompt": "Dans ce modèle, quel composant est chargé de stocker le carburant ? Donne son identifiant exact.",
+      "reference_answer": "VehicleFuelSystem.FuelTank (used as VehicleFuelSystem.Vehicle.tank).",
+      "checks": [
+        {
+          "answer_contains_any": [
+            "VehicleFuelSystem.FuelTank",
+            "VehicleFuelSystem.Vehicle.tank"
+          ]
+        },
+        {
+          "unchanged": true
+        }
+      ]
+    },
+    {
       "id": "c-add-definition",
       "category": "create",
       "model": "data/sample.sysml",

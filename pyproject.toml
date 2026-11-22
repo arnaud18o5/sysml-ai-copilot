@@ -14,10 +14,10 @@ dependencies = [
 
 [project.optional-dependencies]
 mcp = ["mcp>=2.0"]
-graph = ["neo4j>=5.20", "fastembed>=0.3"]
+semantic = ["fastembed>=0.3"]
 dev = ["pytest>=8"]
 eval = ["anthropic>=1.0", "mcp>=2.0"]
-all = ["sysml-copilot[mcp,graph,dev,eval]"]
+all = ["sysml-copilot[mcp,semantic,dev,eval]"]
 
 [project.scripts]
 mbse = "sysml_copilot.cli:main"

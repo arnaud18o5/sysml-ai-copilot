@@ -38,6 +38,11 @@ aside, section { overflow: auto; }
 aside.left { border-right: 1px solid var(--border); background: var(--panel); padding: 8px 0; }
 aside.right { border-left: 1px solid var(--border); background: var(--panel); padding: 12px; }
 .tree-search { margin: 0 8px 8px; width: calc(100% - 16px); }
+#results { margin: 0 8px 8px; }
+#results .res { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: 4px; cursor: pointer; }
+#results .res:hover { background: var(--accent-soft); }
+#results .score { margin-left: auto; color: var(--muted); font-size: 11px; }
+#results .head { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; padding: 0 6px 4px; }
 .tree ul { list-style: none; margin: 0; padding-left: 14px; }
 .tree > ul { padding-left: 4px; }
 .tree li > .row { display: flex; align-items: center; gap: 5px; padding: 1px 6px; border-radius: 4px; cursor: pointer; white-space: nowrap; }
@@ -101,7 +106,8 @@ pre.src { background: var(--panel); border: 1px solid var(--border); border-radi
 </header>
 <main>
   <aside class="left">
-    <input class="tree-search" id="search" placeholder="Filter elements…">
+    <input class="tree-search" id="search" placeholder="Filter, or Enter to search by meaning…" title="Type to filter names; press Enter for a semantic search (any language)">
+    <div id="results"></div>
     <div class="tree" id="tree"></div>
   </aside>
   <section>
@@ -609,7 +615,22 @@ async function doRedo() { const r = await api("redo"); if (r.ok) refresh(); }
 $("#undo").onclick = doUndo; $("#redo").onclick = doRedo;
 $("#reload").onclick = async () => { await api("reload"); refresh(); };
 $("#vbadge").onclick = () => document.querySelector('#tabs button[data-tab="valid"]').click();
-$("#search").oninput = (ev) => { S.filter = ev.target.value; renderTree(); };
+$("#search").oninput = (ev) => { S.filter = ev.target.value; $("#results").replaceChildren(); renderTree(); };
+$("#search").onkeydown = async (ev) => {
+  if (ev.key === "Escape") { ev.target.value = ""; S.filter = ""; $("#results").replaceChildren(); renderTree(); return; }
+  if (ev.key !== "Enter" || !ev.target.value.trim()) return;
+  const box = $("#results");
+  box.replaceChildren(h("div", { class: "hint" }, "Searching…"));
+  const r = await api("find_elements", { query: ev.target.value.trim(), limit: 8 });
+  box.replaceChildren();
+  if (!r.ok) { box.append(h("div", { class: "msg err" }, formatError(r.error))); return; }
+  S.filter = ""; renderTree();
+  box.append(h("div", { class: "head" }, h("span", {}, `${r.results.length} result(s) · ${r.mode}`),
+    h("span", { style: "cursor:pointer", onclick: () => box.replaceChildren() }, "✕")));
+  if (r.note) box.append(h("div", { class: "hint" }, r.note));
+  r.results.forEach(x => { const e = S.byId[x.id]; box.append(h("div", { class: "res", title: x.id, onclick: () => select(x.id) },
+    e ? iconFor(e) : null, h("span", {}, x.name), h("span", { class: "score" }, String(Math.round(x.score))))); });
+};
 // Live view: pick up changes made by an agent (MCP), another tab or a git pull.
 setInterval(async () => {
   if (!S.model || document.hidden) return;
