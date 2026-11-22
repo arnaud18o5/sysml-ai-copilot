@@ -122,15 +122,43 @@ sysml_copilot/
   parser.py       Legacy flat (elements, relations) view used by ingest.py
   ingest.py       Optional: load into Neo4j with embeddings
   query.py        Optional: natural-language impact analysis via vector search
-tests/            pytest suite (parser, resolution, operations, CLI, MCP, web API)
+tests/            pytest suite (parser, resolution, operations, CLI, MCP, web API, evals)
+tools/conformance.py   OMG SysML v2 release conformance harness (+ baseline)
+evals/            Agent eval harness: tasks, starting models, runner
+docs/ROADMAP.md   Phased plan with measurable exit criteria
 data/sample.sysml Example model (vehicle fuel system)
 ```
+
+## Deployment
+
+```bash
+docker compose --profile workbench up -d --build      # web on :8765, MCP (HTTP) on :8766/mcp
+MODELS_DIR=/path/to/model-repo docker compose --profile workbench up -d
+```
+
+The web workbench and the MCP server are separate processes working on the same files. Each one picks up changes made by the other, or by a `git pull`. A session with unsaved changes refuses writes with a `conflict` error instead of overwriting them. The UI refreshes live, so you can watch an agent build the model.
+
+There is no authentication yet: ports are bound to `127.0.0.1`. Put a reverse proxy with SSO in front before exposing them (see `docs/ROADMAP.md`, Phase 4).
+
+## Measuring progress
+
+- **Conformance with the official OMG SysML v2 release** (examples, training, validation, standard library), at parse, round-trip and resolve levels. CI fails on any regression against `tools/conformance_baseline.json`.
+  ```bash
+  venv/bin/python tools/conformance.py fetch && venv/bin/python tools/conformance.py report
+  ```
+- **Agent evals.** `evals/tasks.json` holds modelling tasks: queries, creation, relationships, refactoring, fixing a broken model, and multi-step design. Each one is graded by deterministic checks on the resulting model.
+  ```bash
+  venv/bin/python evals/run.py --oracle                     # reference solutions (CI)
+  venv/bin/python evals/run.py --model claude-haiku-5-5     # a small model through the MCP tools
+  ```
+
+The plan towards an enterprise-ready tool, with exit criteria per phase, is in [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Optional: Neo4j + natural-language queries
 
 ```bash
 venv/bin/pip install -e ".[graph]"
-docker compose up -d
+docker compose up -d neo4j
 venv/bin/python -m sysml_copilot.ingest data/sample.sysml
 venv/bin/python -m sysml_copilot.query "what is the impact of the fuel pump?"
 ```

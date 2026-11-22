@@ -27,7 +27,11 @@ venv/bin/python -m pytest                              # test suite (must stay g
 venv/bin/mbse -m data check                            # validate the example model
 venv/bin/mbse -m data serve                            # web workbench
 venv/bin/mbse -m data <operation> key=value ...        # any operation, JSON out
+venv/bin/python tools/conformance.py report            # OMG SysML v2 conformance (after `fetch`)
+venv/bin/python evals/run.py --oracle                  # agent eval suite sanity (no API)
 ```
+
+Where the project is going, and how progress is measured: `docs/ROADMAP.md`. Never lower the conformance baseline (`tools/conformance_baseline.json`), and give every new operation eval tasks.
 
 The optional Neo4j pipeline (`docker compose up -d`, then `ingest` / `query`) is covered by the `run-pipeline` skill.
 
@@ -36,6 +40,7 @@ The optional Neo4j pipeline (`docker compose up -d`, then `ingest` / `query`) is
 - **Text is the source of truth.** The model tree mirrors the notation, and `serialize_document(parse_document(t))` must be idempotent; `data/sample.sysml` is kept in canonical form (a test checks it byte for byte). Never store resolved pointers in the tree: references are `Ref` segment lists resolved by `Workspace`.
 - **Elements are identified by qualified name** (`Pkg.Vehicle.engine`, non-identifier segments quoted), not a synthetic UUID — computed in `Workspace._index`. The Neo4j `MERGE` keys in `ingest.py` use the same IDs.
 - **Name lookup inside an element walks through its types and supertypes** (`Workspace._lookup_in`): this is what lets `connect tank.fuelOut to pump.fuelIn` resolve although the ports live on `FuelTank`/`FuelPump`. Don't simplify it away.
+- **Several processes may share the model files** (web UI, MCP server, CLI, git). `call()` runs `ModelService.sync()` before every operation: reload if nothing is unsaved, otherwise refuse writes with `conflict`. Don't bypass `call()` in front-ends.
 - **Operations are deterministic and transactional.** Every mutation goes through `ModelService._mutate` (snapshot, rollback on error, undo entry, autosave) and must either fully apply or raise `OpError` with a stable `code`. Renames/moves rely on `_capture_refs` + `_reanchor` to rewrite references; new mutations that can change what a name means must use them too. Return plain JSON-able dicts — they are shown verbatim to agents.
 - **A new operation is exposed in three places**: `operations.py` (method + the `*_OPERATIONS` catalogue), `mcp_server.py` (typed tool with a precise description — small models depend on it), and tests. The CLI and web API pick it up from the catalogue.
 - **Impact analysis deliberately excludes `CONTAINS`** (in `operations.IMPACT_RELATION_TYPES` and `query.IMPACT_RELATIONSHIP_TYPES`), to avoid flooding results with unrelated siblings. Extend those lists for new relation types; don't add `CONTAINS` back.
@@ -52,3 +57,4 @@ The optional Neo4j pipeline (`docker compose up -d`, then `ingest` / `query`) is
 - `run-pipeline` — starts Neo4j, runs ingestion, runs a query, using the correct venv interpreter.
 - `extend-grammar` — checklist for adding a new SysML v2 construct (grammar, tree builder, serializer, resolution, operations, tests).
 - `edit-model` — how to inspect and change a SysML v2 model through the `mbse` operations instead of editing `.sysml` text by hand.
+- `roadmap-work` — pick the next roadmap item and deliver it with conformance/eval evidence.
