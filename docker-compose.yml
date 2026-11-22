@@ -1,4 +1,30 @@
 services:
+  # Web workbench on http://localhost:8765, editing the models in ./data
+  # (set MODELS_DIR to point at your own model repository).
+  workbench:
+    build: .
+    image: sysml-copilot:latest
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - "127.0.0.1:8765:8765"
+    volumes:
+      - ${MODELS_DIR:-./data}:/models
+    profiles: ["workbench"]
+
+  # MCP server over streamable HTTP on http://localhost:8766/mcp, same models.
+  # The workbench and the MCP server pick up each other's changes on disk.
+  mcp:
+    build: .
+    image: sysml-copilot:latest
+    user: "${UID:-1000}:${GID:-1000}"
+    command: ["mbse-mcp", "/models", "--transport", "streamable-http", "--host", "0.0.0.0", "--port", "8766"]
+    ports:
+      - "127.0.0.1:8766:8766"
+    volumes:
+      - ${MODELS_DIR:-./data}:/models
+    profiles: ["workbench"]
+
+  # Optional: graph database for the natural-language query pipeline.
   neo4j:
     image: neo4j:5
     container_name: sysml-copilot-neo4j
