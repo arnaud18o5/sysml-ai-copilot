@@ -1,5 +1,4 @@
 package VehicleFuelSystem {
-
     port def FuelPort;
 
     attribute def Pressure;
@@ -41,7 +40,6 @@ package VehicleFuelSystem {
         doc /* The fuel delivered to the engine shall be free of contaminants above 10ppm. */
     }
 
-    satisfy FuelDeliveryRequirement by pump;
-    satisfy FuelPurityRequirement by tank;
-
+    satisfy FuelDeliveryRequirement by Vehicle.pump;
+    satisfy FuelPurityRequirement by Vehicle.tank;
 }

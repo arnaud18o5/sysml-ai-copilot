@@ -4,7 +4,7 @@ from . import config
 from .embeddings import embed_texts
 from .ingest import get_driver
 
-IMPACT_RELATIONSHIP_TYPES = "CONNECTS_TO|TYPED_BY|SATISFIES"
+IMPACT_RELATIONSHIP_TYPES = "CONNECTS_TO|TYPED_BY|SATISFIES|SPECIALIZES|SUBSETS|REDEFINES|ALLOCATES"
 
 
 def resolve_element(session, nl_query, top_k=3):

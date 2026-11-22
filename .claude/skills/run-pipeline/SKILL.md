@@ -1,6 +1,6 @@
 ---
 name: run-pipeline
-description: Start Neo4j, ingest a SysML v2 file, and run a natural-language impact-analysis query against it. Use whenever the user wants to test a change to the parser/ingestion/query code, or explore a SysML v2 model.
+description: Start Neo4j, ingest a SysML v2 file, and run a natural-language query against it (optional vector-search pipeline). Use when the user wants to test ingest.py/query.py or ask free-text questions; for structural analysis or edits, use the edit-model skill.
 ---
 
 # Run the ingestion + query pipeline
@@ -17,6 +17,7 @@ description: Start Neo4j, ingest a SysML v2 file, and run a natural-language imp
 
 2. Always use the venv interpreter explicitly — `python`/`pip` on this machine are aliased to a non-venv interpreter:
    ```bash
+   venv/bin/pip install -e ".[graph]"   # once: neo4j driver + fastembed
    venv/bin/python -m sysml_copilot.ingest data/sample.sysml
    ```
    Replace `data/sample.sysml` with whatever file is being tested. Ingestion wipes and reloads the whole graph (`reset_graph` in `ingest.py`) — it's not incremental, so re-running it is always safe/expected when iterating.
