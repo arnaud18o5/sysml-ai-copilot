@@ -1,0 +1,608 @@
+{
+  "version": 1,
+  "tasks": [
+    {
+      "id": "q-count-requirements",
+      "category": "query",
+      "model": "data/sample.sysml",
+      "prompt": "Combien d'exigences contient le modèle, et par quels éléments chacune est-elle satisfaite ?",
+      "reference_answer": "2 requirements: FuelDeliveryRequirement satisfied by Vehicle.pump, FuelPurityRequirement satisfied by Vehicle.tank.",
+      "checks": [
+        {
+          "answer_contains": [
+            "FuelDeliveryRequirement",
+            "FuelPurityRequirement"
+          ]
+        },
+        {
+          "answer_contains_any": [
+            "pump"
+          ]
+        },
+        {
+          "answer_contains_any": [
+            "tank"
+          ]
+        },
+        {
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "id": "q-impact-pump",
+      "category": "query",
+      "model": "data/sample.sysml",
+      "prompt": "What would be impacted if we change the FuelPump definition? List the impacted elements.",
+      "reference_answer": "Vehicle.pump, the FuelDeliveryRequirement, and the connected engine and tank parts.",
+      "checks": [
+        {
+          "answer_contains_any": [
+            "Vehicle.pump",
+            "pump"
+          ]
+        },
+        {
+          "answer_contains": [
+            "FuelDeliveryRequirement"
+          ]
+        },
+        {
+          "answer_contains_any": [
+            "engine",
+            "Engine"
+          ]
+        },
+        {
+          "unchanged": true
+        }
+      ]
+    },
+    {
+      "id": "c-add-definition",
+      "category": "create",
+      "model": "data/sample.sysml",
+      "prompt": "Add a part definition named FuelFilter in the VehicleFuelSystem package, documented as 'Removes contaminants from the fuel', with an input port fuelIn and an output port fuelOut, both typed by FuelPort.",
+      "reference": [
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "part def",
+            "name": "FuelFilter",
+            "owner": "VehicleFuelSystem",
+            "doc": "Removes contaminants from the fuel"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "port",
+            "name": "fuelIn",
+            "owner": "VehicleFuelSystem.FuelFilter",
+            "type": "VehicleFuelSystem.FuelPort",
+            "direction": "in"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "port",
+            "name": "fuelOut",
+            "owner": "VehicleFuelSystem.FuelFilter",
+            "type": "VehicleFuelSystem.FuelPort",
+            "direction": "out"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.FuelFilter",
+          "kind": "PartDefinition",
+          "doc_contains": "contaminants"
+        },
+        {
+          "exists": "VehicleFuelSystem.FuelFilter.fuelIn",
+          "kind": "PortUsage",
+          "type": "VehicleFuelSystem.FuelPort",
+          "direction": "in"
+        },
+        {
+          "exists": "VehicleFuelSystem.FuelFilter.fuelOut",
+          "kind": "PortUsage",
+          "type": "VehicleFuelSystem.FuelPort",
+          "direction": "out"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "c-add-attribute",
+      "category": "create",
+      "model": "data/sample.sysml",
+      "prompt": "Ajoute à la définition Engine un attribut maxPower de type Real valant 150 [kW].",
+      "reference": [
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "attribute",
+            "name": "maxPower",
+            "owner": "VehicleFuelSystem.Engine",
+            "type": "Real",
+            "value": "150 [kW]"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.Engine.maxPower",
+          "kind": "AttributeUsage",
+          "type": "ScalarValues.Real",
+          "value": 150
+        },
+        {
+          "source_contains": "attribute maxPower : Real = 150 [kW];"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "r-connect-chain",
+      "category": "relationship",
+      "model": "data/sample.sysml",
+      "prompt": "In the Vehicle, connect the tank's fuelOut port directly to the engine's fuelIn port.",
+      "reference": [
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "connect",
+            "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+            "target": "VehicleFuelSystem.Vehicle.engine.fuelIn"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "relation": "CONNECTS_TO",
+          "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+          "target": "VehicleFuelSystem.Vehicle.engine.fuelIn",
+          "undirected": true
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "r-new-requirement",
+      "category": "relationship",
+      "model": "data/sample.sysml",
+      "prompt": "Create a requirement definition TankCapacityRequirement stating 'The tank shall hold at least 50 liters.' and record that it is satisfied by the vehicle's tank.",
+      "reference": [
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "requirement def",
+            "name": "TankCapacityRequirement",
+            "owner": "VehicleFuelSystem",
+            "doc": "The tank shall hold at least 50 liters."
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "satisfy",
+            "source": "VehicleFuelSystem.Vehicle.tank",
+            "target": "VehicleFuelSystem.TankCapacityRequirement"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.TankCapacityRequirement",
+          "kind": "RequirementDefinition",
+          "doc_contains": "50"
+        },
+        {
+          "relation": "SATISFIES",
+          "source": "VehicleFuelSystem.Vehicle.tank",
+          "target": "VehicleFuelSystem.TankCapacityRequirement"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "e-rename",
+      "category": "edit",
+      "model": "data/sample.sysml",
+      "prompt": "Renomme la définition FuelTank en Reservoir sans casser le modèle.",
+      "reference": [
+        {
+          "op": "update_element",
+          "args": {
+            "element": "VehicleFuelSystem.FuelTank",
+            "name": "Reservoir"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.Reservoir",
+          "kind": "PartDefinition"
+        },
+        {
+          "absent": "VehicleFuelSystem.FuelTank"
+        },
+        {
+          "exists": "VehicleFuelSystem.Vehicle.tank",
+          "type": "VehicleFuelSystem.Reservoir"
+        },
+        {
+          "valid": true,
+          "no_warnings": true
+        }
+      ]
+    },
+    {
+      "id": "e-move",
+      "category": "edit",
+      "model": "data/sample.sysml",
+      "prompt": "Create a package Components inside VehicleFuelSystem and move the Engine, FuelTank and FuelPump definitions into it. The model must stay valid.",
+      "reference": [
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "package",
+            "name": "Components",
+            "owner": "VehicleFuelSystem"
+          }
+        },
+        {
+          "op": "move_element",
+          "args": {
+            "element": "VehicleFuelSystem.Engine",
+            "new_owner": "VehicleFuelSystem.Components"
+          }
+        },
+        {
+          "op": "move_element",
+          "args": {
+            "element": "VehicleFuelSystem.FuelTank",
+            "new_owner": "VehicleFuelSystem.Components"
+          }
+        },
+        {
+          "op": "move_element",
+          "args": {
+            "element": "VehicleFuelSystem.FuelPump",
+            "new_owner": "VehicleFuelSystem.Components"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.Components.Engine"
+        },
+        {
+          "exists": "VehicleFuelSystem.Components.FuelTank"
+        },
+        {
+          "exists": "VehicleFuelSystem.Components.FuelPump"
+        },
+        {
+          "exists": "VehicleFuelSystem.Vehicle.pump",
+          "type": "VehicleFuelSystem.Components.FuelPump"
+        },
+        {
+          "valid": true,
+          "no_warnings": true
+        }
+      ]
+    },
+    {
+      "id": "e-delete-cascade",
+      "category": "edit",
+      "model": "data/sample.sysml",
+      "prompt": "Remove the businessCase part from the model.",
+      "reference": [
+        {
+          "op": "delete_element",
+          "args": {
+            "element": "VehicleFuelSystem.businessCase"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "absent": "VehicleFuelSystem.businessCase"
+        },
+        {
+          "exists": "VehicleFuelSystem.Engine"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "e-delete-referenced",
+      "category": "edit",
+      "model": "data/sample.sysml",
+      "prompt": "Supprime complètement la définition FuelPump et tout ce qui y fait référence ; le modèle doit rester sans erreur.",
+      "reference": [
+        {
+          "op": "delete_element",
+          "args": {
+            "element": "VehicleFuelSystem.FuelPump",
+            "cascade": true
+          }
+        }
+      ],
+      "checks": [
+        {
+          "absent": "VehicleFuelSystem.FuelPump"
+        },
+        {
+          "exists": "VehicleFuelSystem.Engine"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "f-fix-broken",
+      "category": "fix",
+      "model": "evals/models/broken.sysml",
+      "prompt": "This drone model has validation errors. Fix them all without deleting any element.",
+      "reference": [
+        {
+          "op": "update_element",
+          "args": {
+            "element": "Drone.Airframe.battery",
+            "type": "Drone.Battery"
+          }
+        },
+        {
+          "op": "remove_relationship",
+          "args": {
+            "statement": "satisfy Endurance by Airframe.batery;"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "satisfy",
+            "source": "Drone.Airframe.battery",
+            "target": "Drone.Endurance"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "valid": true
+        },
+        {
+          "exists": "Drone.Airframe.battery",
+          "type": "Drone.Battery"
+        },
+        {
+          "relation": "SATISFIES",
+          "source": "Drone.Airframe.battery",
+          "target": "Drone.Endurance"
+        },
+        {
+          "relation": "CONNECTS_TO",
+          "source": "Drone.Airframe.battery.power",
+          "target": "Drone.Airframe.motors.power"
+        }
+      ]
+    },
+    {
+      "id": "m-insert-filter",
+      "category": "multi-step",
+      "model": "data/sample.sysml",
+      "prompt": "Insert a fuel filter between the tank and the pump in the Vehicle: define FuelFilter (ports fuelIn and fuelOut typed by FuelPort), add a part filter to Vehicle, replace the tank->pump connection by tank->filter and filter->pump, and make the filter satisfy FuelPurityRequirement.",
+      "reference": [
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "part def",
+            "name": "FuelFilter",
+            "owner": "VehicleFuelSystem"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "port",
+            "name": "fuelIn",
+            "owner": "VehicleFuelSystem.FuelFilter",
+            "type": "VehicleFuelSystem.FuelPort",
+            "direction": "in"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "port",
+            "name": "fuelOut",
+            "owner": "VehicleFuelSystem.FuelFilter",
+            "type": "VehicleFuelSystem.FuelPort",
+            "direction": "out"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "part",
+            "name": "filter",
+            "owner": "VehicleFuelSystem.Vehicle",
+            "type": "VehicleFuelSystem.FuelFilter"
+          }
+        },
+        {
+          "op": "remove_relationship",
+          "args": {
+            "kind": "connect",
+            "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+            "target": "VehicleFuelSystem.Vehicle.pump.fuelIn"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "connect",
+            "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+            "target": "VehicleFuelSystem.Vehicle.filter.fuelIn"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "connect",
+            "source": "VehicleFuelSystem.Vehicle.filter.fuelOut",
+            "target": "VehicleFuelSystem.Vehicle.pump.fuelIn"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "satisfy",
+            "source": "VehicleFuelSystem.Vehicle.filter",
+            "target": "VehicleFuelSystem.FuelPurityRequirement"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.FuelFilter",
+          "kind": "PartDefinition"
+        },
+        {
+          "exists": "VehicleFuelSystem.Vehicle.filter",
+          "type": "VehicleFuelSystem.FuelFilter"
+        },
+        {
+          "relation": "CONNECTS_TO",
+          "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+          "target": "VehicleFuelSystem.Vehicle.filter.fuelIn",
+          "undirected": true
+        },
+        {
+          "relation": "CONNECTS_TO",
+          "source": "VehicleFuelSystem.Vehicle.filter.fuelOut",
+          "target": "VehicleFuelSystem.Vehicle.pump.fuelIn",
+          "undirected": true
+        },
+        {
+          "relation": "CONNECTS_TO",
+          "source": "VehicleFuelSystem.Vehicle.tank.fuelOut",
+          "target": "VehicleFuelSystem.Vehicle.pump.fuelIn",
+          "undirected": true,
+          "present": false
+        },
+        {
+          "relation": "SATISFIES",
+          "source": "VehicleFuelSystem.Vehicle.filter",
+          "target": "VehicleFuelSystem.FuelPurityRequirement"
+        },
+        {
+          "valid": true
+        }
+      ]
+    },
+    {
+      "id": "m-new-subsystem",
+      "category": "multi-step",
+      "model": "data/sample.sysml",
+      "prompt": "Model an electrical subsystem in a new package Electrical inside VehicleFuelSystem: a port def PowerPort, a part def Battery with an out port power, a part def Ecu with an in port power, and in the Vehicle add parts battery and ecu connected through their power ports. Then add a requirement def PowerSupply ('The ECU shall be powered by the battery.') satisfied by the vehicle's battery.",
+      "reference": [
+        {
+          "op": "add_from_text",
+          "args": {
+            "owner": "VehicleFuelSystem",
+            "text": "package Electrical { port def PowerPort; part def Battery { out port power : PowerPort; } part def Ecu { in port power : PowerPort; } requirement def PowerSupply { doc /* The ECU shall be powered by the battery. */ } }"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "part",
+            "name": "battery",
+            "owner": "VehicleFuelSystem.Vehicle",
+            "type": "VehicleFuelSystem.Electrical.Battery"
+          }
+        },
+        {
+          "op": "create_element",
+          "args": {
+            "kind": "part",
+            "name": "ecu",
+            "owner": "VehicleFuelSystem.Vehicle",
+            "type": "VehicleFuelSystem.Electrical.Ecu"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "connect",
+            "source": "VehicleFuelSystem.Vehicle.battery.power",
+            "target": "VehicleFuelSystem.Vehicle.ecu.power"
+          }
+        },
+        {
+          "op": "add_relationship",
+          "args": {
+            "kind": "satisfy",
+            "source": "VehicleFuelSystem.Vehicle.battery",
+            "target": "VehicleFuelSystem.Electrical.PowerSupply"
+          }
+        }
+      ],
+      "checks": [
+        {
+          "exists": "VehicleFuelSystem.Electrical",
+          "kind": "Package"
+        },
+        {
+          "exists": "VehicleFuelSystem.Electrical.Battery.power",
+          "kind": "PortUsage",
+          "direction": "out"
+        },
+        {
+          "exists": "VehicleFuelSystem.Electrical.Ecu.power",
+          "kind": "PortUsage",
+          "direction": "in"
+        },
+        {
+          "exists": "VehicleFuelSystem.Vehicle.battery",
+          "type": "VehicleFuelSystem.Electrical.Battery"
+        },
+        {
+          "exists": "VehicleFuelSystem.Vehicle.ecu",
+          "type": "VehicleFuelSystem.Electrical.Ecu"
+        },
+        {
+          "relation": "CONNECTS_TO",
+          "source": "VehicleFuelSystem.Vehicle.battery.power",
+          "target": "VehicleFuelSystem.Vehicle.ecu.power",
+          "undirected": true
+        },
+        {
+          "relation": "SATISFIES",
+          "source": "VehicleFuelSystem.Vehicle.battery",
+          "target": "VehicleFuelSystem.Electrical.PowerSupply"
+        },
+        {
+          "valid": true
+        }
+      ]
+    }
+  ]
+}
