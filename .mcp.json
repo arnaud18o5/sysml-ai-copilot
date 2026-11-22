@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "sysml-mbse": {
+      "command": "venv/bin/mbse-mcp",
+      "args": ["data"]
+    }
+  }
+}

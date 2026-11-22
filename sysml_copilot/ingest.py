@@ -4,7 +4,14 @@ from neo4j import GraphDatabase
 
 from . import config
 from .embeddings import embed_texts, element_text
-from .parser import SysmlSyntaxError, parse_sysml
+from .parser import SysmlSemanticError, SysmlSyntaxError, parse_sysml
+
+# Relation types are interpolated into Cypher (they can't be parameters),
+# so only these known values are accepted.
+ALLOWED_RELATION_TYPES = {
+    "CONTAINS", "TYPED_BY", "SPECIALIZES", "SUBSETS", "REDEFINES",
+    "CONNECTS_TO", "SATISFIES", "ALLOCATES",
+}
 
 
 def get_driver():
@@ -57,6 +64,8 @@ def load_elements(session, elements, embeddings):
 
 def load_relations(session, relations):
     for relation in relations:
+        if relation["type"] not in ALLOWED_RELATION_TYPES:
+            raise ValueError(f"unexpected relation type {relation['type']!r}")
         session.run(
             f"""
             MATCH (a:Element {{id: $source}})
@@ -82,6 +91,9 @@ def ingest_file(path):
             print(exc.context)
         else:
             print(str(exc))
+        sys.exit(1)
+    except SysmlSemanticError as exc:
+        print(f"Invalid SysML v2 model in {path}: {exc}")
         sys.exit(1)
 
     texts = [element_text(e) for e in elements]
