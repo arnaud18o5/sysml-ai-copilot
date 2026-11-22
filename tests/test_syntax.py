@@ -7,6 +7,7 @@ from sysml_copilot.syntax import (
     parse_ref,
     parse_value,
     serialize_document,
+    tree_signature,
 )
 
 from .conftest import SAMPLE
@@ -15,7 +16,9 @@ from .conftest import SAMPLE
 def roundtrip(text):
     doc = parse_document(text)
     out = serialize_document(doc)
-    assert serialize_document(parse_document(out)) == out, "serialization must be idempotent"
+    again = parse_document(out)
+    assert tree_signature(again) == tree_signature(doc), "serialization must not lose information"
+    assert serialize_document(again) == out, "serialization must be idempotent"
     return doc, out
 
 
@@ -56,7 +59,7 @@ package 'Système' {
     part def Wheel;
     requirement def R1;
     use case def Drive;
-    verification case def VerifyR1;
+    verification def VerifyR1;
     enum def Color {
         enum red;
         enum green;
@@ -154,3 +157,76 @@ def test_parse_ref_and_value():
     assert parse_value('"x"').kind == "string"
     assert parse_value("true").kind == "boolean"
     assert parse_value("A.b").kind == "ref"
+
+
+def test_declaration_features_roundtrip():
+    text = """standard library package Lib {
+    private import ScalarValues::*;
+    public alias Num for ScalarValues::Real;
+    comment about Base /* Explains Base. */
+    comment Note /* A named note. */
+
+    abstract part def <B> Base;
+    metadata def Safety;
+    port def P;
+
+    #Safety part def Car :> Base {
+        protected attribute :>> mass : Real = 1200 [kg];
+        attribute wheels : Num[4] ordered nonunique;
+        in ref item fuel :: > x;
+        end #Safety part bead : Base[1];
+        variant part sports : Base;
+        port p : ~P;
+        derived readonly attribute total : Real default = 3;
+        attribute speed : Real := 0;
+        part x :> Base;
+        ref r ::> x;
+        metadata m : Safety about x;
+        @Safety;
+    }
+
+    verification def Test;
+    individual part def Unit1 :> Car;
+}
+
+library package L2;
+"""
+    text = text.replace(":: > x", ":> x")
+    doc, out = roundtrip(text)
+    pkg = doc.members[0]
+    assert pkg.library_kind == "standard library" and pkg.kind == "LibraryPackage"
+    imp, alias, about_comment, note = pkg.members[:4]
+    assert imp.visibility == "private"
+    assert alias.name == "Num" and alias.visibility == "public"
+    assert [str(r) for r in about_comment.about] == ["Base"] and about_comment.text == "Explains Base."
+    assert note.name == "Note"
+    els = {m.effective_name: m for m in pkg.members if isinstance(m, Element)}
+    assert els["Base"].abstract and els["Base"].short_name == "B"
+    assert els["Safety"].kind == "MetadataDefinition"
+    car = els["Car"]
+    assert [str(m) for m in car.metadata] == ["Safety"]
+    f = {m.effective_name: m for m in car.members if isinstance(m, Element) and m.effective_name}
+    assert f["mass"].visibility == "protected" and f["mass"].name is None
+    assert f["wheels"].multiplicity_props == ["ordered", "nonunique"]
+    assert f["fuel"].direction == "in" and f["fuel"].is_ref
+    assert f["bead"].modifiers == ["end"] and [str(m) for m in f["bead"].metadata] == ["Safety"]
+    assert f["sports"].modifiers == ["variant"]
+    assert f["p"].types[0].conjugated
+    assert f["total"].modifiers == ["readonly", "derived"] and f["total"].value_op == "default ="
+    assert f["speed"].value_op == ":="
+    assert f["r"].kind == "ReferenceUsage" and [str(r) for r in f["r"].references] == ["x"]
+    assert f["m"].kind == "MetadataUsage" and [str(r) for r in f["m"].about] == ["x"]
+    shorthand = [m for m in car.members if isinstance(m, Element) and m.at_shorthand]
+    assert len(shorthand) == 1 and str(shorthand[0].types[0]) == "Safety"
+    assert els["Test"].kind == "VerificationCaseDefinition"
+    assert els["Unit1"].modifiers == ["individual"]
+    assert "port p : ~P;" in out and "@Safety;" in out and "library package L2 {" in out
+
+
+def test_modifier_misuse_is_rejected():
+    with pytest.raises(SysmlSyntaxError):
+        parse_document("package P { in part def A; }")
+    with pytest.raises(SysmlSyntaxError):
+        parse_document("abstract package P;")
+    with pytest.raises(SysmlSyntaxError):
+        parse_document("package P { abstract import X::*; }")

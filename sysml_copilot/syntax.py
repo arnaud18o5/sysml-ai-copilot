@@ -12,11 +12,17 @@ normalized (indentation, blank lines, `::` vs `.` in feature references).
 
 from __future__ import annotations
 
+import re
+
 from lark import Lark, Token, Tree
 from lark.exceptions import UnexpectedCharacters, UnexpectedEOF, UnexpectedInput, UnexpectedToken
 
 from .model import (
     ELEMENT_KEYWORDS,
+    MODIFIERS,
+    SPECIAL_KEYWORDS,
+    Alias,
+    Comment,
     Document,
     Element,
     Import,
@@ -27,8 +33,8 @@ from .model import (
 )
 
 _KIND_ALTERNATIVES = " | ".join(
-    " ".join(f'"{w}"' for w in kw.split()) + (' "case"' if kw in ("verification", "analysis") else "")
-    for kw in ELEMENT_KEYWORDS
+    " ".join(f'"{w}"' for w in kw.split())
+    for kw in ELEMENT_KEYWORDS if kw not in SPECIAL_KEYWORDS
 )
 
 GRAMMAR = rf"""
@@ -37,28 +43,54 @@ GRAMMAR = rf"""
     ?body: "{{" member* "}}" -> block
          | ";"               -> empty
 
-    ?member: package
-           | definition
-           | usage
-           | connect_stmt
-           | satisfy_stmt
-           | allocate_stmt
-           | import_stmt
-           | doc_stmt
+    member: visibility? modifiers? member_decl
+    prefix_metadata: "#" ref
+    ?member_decl: package
+                | definition
+                | metadata_def
+                | usage
+                | metadata_usage
+                | connect_stmt
+                | satisfy_stmt
+                | allocate_stmt
+                | import_stmt
+                | alias_stmt
+                | doc_stmt
+                | comment_stmt
 
-    package: "package" name body
+    package: library_prefix? "package" short_name? name body
+    !library_prefix: "standard" "library" | "library"
 
-    definition: ABSTRACT? kind "def" name specialization? body
+    modifiers: (modifier | prefix_metadata)+
+    !modifier: "abstract" | "variation" | "variant" | "individual" | "readonly" | "derived"
+             | "end" | "constant" | "ref" | "in" | "out" | "inout"
+
+    definition: kind "def" short_name? name specialization* body
+    metadata_def: META "def" short_name? name specialization* body
     specialization: (":>" | "specializes") ref ("," ref)*
 
-    usage: ABSTRACT? direction? kind name? multiplicity? typing? multiplicity? subsetting? redefinition? value? body
-    typing: ":" ref ("," ref)*
+    usage: kind? short_name? name? usage_spec* value? body
+    ?usage_spec: typing | subsetting | redefinition | reference_subsetting | multiplicity_part
+    typing: (":" | "defined" "by") typed_ref ("," typed_ref)*
+    typed_ref: CONJ? ref
+    CONJ: "~"
     subsetting: (":>" | "subsets") ref ("," ref)*
     redefinition: (":>>" | "redefines") ref ("," ref)*
+    reference_subsetting: ("::>" | "references") ref ("," ref)*
+    multiplicity_part: multiplicity mult_prop*
+                     | mult_prop+
     multiplicity: "[" MULT_BOUND (".." MULT_BOUND)? "]"
     MULT_BOUND: /[0-9]+/ | "*"
+    !mult_prop: "ordered" | "nonunique"
 
-    value: "=" expr
+    metadata_usage: (META | AT) metadata_decl about? body
+    metadata_decl: (short_name? name (":" | "typed" "by"))? ref
+    about: "about" ref ("," ref)*
+    META: "metadata"
+    AT: "@"
+
+    value: value_op expr
+    !value_op: "=" | ":=" | "default" | "default" "=" | "default" ":="
     ?expr: SIGNED_NUMBER unit? -> num
          | ESCAPED_STRING      -> string
          | "true"              -> true
@@ -67,20 +99,22 @@ GRAMMAR = rf"""
     unit: "[" ref "]"
 
     !kind: {_KIND_ALTERNATIVES}
-    !direction: "in" | "out" | "inout"
-    ABSTRACT: "abstract"
 
     connect_stmt: "connect" ref "to" ref ";"
     satisfy_stmt: "satisfy" "requirement"? ref "by" ref ";"
     allocate_stmt: "allocate" ref "to" ref ";"
 
-    import_stmt: VISIBILITY? "import" import_path ";"
-    VISIBILITY: "private" | "public"
+    import_stmt: "import" import_path ";"
+    !visibility: "private" | "public" | "protected"
     import_path: name (DCOLON name)* (DCOLON WILDCARD)?
                | WILDCARD
     WILDCARD: "**" | "*"
 
+    alias_stmt: "alias" short_name? name "for" ref body
+    short_name: "<" name ">"
+
     doc_stmt: DOC
+    comment_stmt: COMMENT
 
     ref: name ((DCOLON | DOT) name)*
     DCOLON: "::"
@@ -88,6 +122,7 @@ GRAMMAR = rf"""
     ?name: NAME | QUOTED_NAME
 
     DOC.2: /doc\s*\/\*(.|\n)*?\*\//
+    COMMENT.2: /comment\b(?:(?!\/\*)[^;{{}}])*\/\*(.|\n)*?\*\//
     NAME: /[^\W\d]\w*/
     QUOTED_NAME: /'([^'\\]|\\.)*'/
     LINE_COMMENT: /\/\/[^\n]*/
@@ -198,7 +233,13 @@ def clean_doc(raw: str) -> str:
 
 
 def _ref(tree: Tree) -> Ref:
-    return Ref([unescape_name(t) for t in tree.children if not (isinstance(t, Token) and t.type in ("DCOLON", "DOT"))])
+    segments, seps = [], []
+    for t in tree.children:
+        if isinstance(t, Token) and t.type in ("DCOLON", "DOT"):
+            seps.append(str(t))
+        else:
+            segments.append(unescape_name(t))
+    return Ref(segments, seps=seps or None)
 
 
 def _refs(tree: Tree) -> list[Ref]:
@@ -223,16 +264,13 @@ def _value(expr: Tree) -> Value:
 
 
 def _kind_keyword(tree: Tree) -> str:
-    words = [str(t) for t in tree.children]
-    if words[-1] == "case" and words[0] in ("verification", "analysis"):
-        return words[0]
-    return " ".join(words)
+    return " ".join(str(t) for t in tree.children)
 
 
 def _attach_body(elem: Element, body, document):
     if isinstance(body, Tree) and body.data == "block":
         for child in body.children:
-            _add_member(elem, _build(child, document), document)
+            _add_member(elem, _build_member(child, document), document)
 
 
 def _add_member(owner, node, document):
@@ -246,60 +284,144 @@ def _add_member(owner, node, document):
     owner.members.append(node)
 
 
+def _build_member(tree: Tree, document):
+    """`member: visibility? modifiers? member_decl`."""
+    visibility, modifiers, decl = None, None, None
+    for c in tree.children:
+        if isinstance(c, Tree) and c.data == "visibility":
+            visibility = str(c.children[0])
+        elif isinstance(c, Tree) and c.data == "modifiers":
+            modifiers = c
+        else:
+            decl = c
+    node = _build(decl, document)
+    if isinstance(node, (Element, Import, Alias, Comment)):
+        node.visibility = visibility
+    if modifiers is not None:
+        if not isinstance(node, Element):
+            raise SysmlSyntaxError("modifiers and '#' annotations are only allowed on elements",
+                                   line=tree.meta.line, column=tree.meta.column)
+        _apply_modifiers(node, modifiers)
+        if node.is_package and (node.modifiers or node.abstract or node.direction):
+            raise SysmlSyntaxError("a package cannot have modifiers",
+                                   line=tree.meta.line, column=tree.meta.column)
+        if node.is_definition and node.direction:
+            raise SysmlSyntaxError(f"a definition cannot have a direction ('{node.direction}')",
+                                   line=tree.meta.line, column=tree.meta.column)
+    return node
+
+
+def _apply_modifiers(elem: Element, tree):
+    for m in tree.children:
+        if m.data == "prefix_metadata":
+            elem.metadata.append(_ref(m.children[0]))
+            continue
+        word = str(m.children[0])
+        if word in ("in", "out", "inout"):
+            elem.direction = word
+        elif word == "abstract":
+            elem.abstract = True
+        elif word not in elem.modifiers:
+            elem.modifiers.append(word)
+    elem.modifiers.sort(key=MODIFIERS.index)
+
+
+def _short_name(tree) -> str:
+    return unescape_name(tree.children[0])
+
+
+def _typed_refs(tree):
+    out = []
+    for c in tree.children:
+        if isinstance(c, Tree) and c.data == "typed_ref":
+            conj = any(isinstance(t, Token) and t.type == "CONJ" for t in c.children)
+            r = _ref([t for t in c.children if isinstance(t, Tree)][0])
+            r.conjugated = conj
+            out.append(r)
+    return out
+
+
 def _build(tree: Tree, document):
     data = tree.data
     if data == "package":
-        name_tok, body = tree.children
-        elem = Element("package", False, name=unescape_name(name_tok))
-        _attach_body(elem, body, document)
+        elem = Element("package", False)
+        for c in tree.children:
+            if isinstance(c, Tree) and c.data == "library_prefix":
+                elem.library_kind = " ".join(str(t) for t in c.children)
+            elif isinstance(c, Tree) and c.data == "short_name":
+                elem.short_name = _short_name(c)
+            elif isinstance(c, Token):
+                elem.name = unescape_name(c)
+        _attach_body(elem, tree.children[-1], document)
         return elem
 
-    if data == "definition":
-        children = list(tree.children)
-        abstract = False
-        if isinstance(children[0], Token) and children[0].type == "ABSTRACT":
-            abstract = True
-            children.pop(0)
-        kind_tree = children.pop(0)
-        name_tok = children.pop(0)
-        body = children.pop()
-        elem = Element(_kind_keyword(kind_tree), True, name=unescape_name(name_tok), abstract=abstract)
-        for c in children:
-            if isinstance(c, Tree) and c.data == "specialization":
-                elem.specializes = _refs(c)
-        _attach_body(elem, body, document)
-        return elem
-
-    if data == "usage":
-        children = list(tree.children)
-        body = children.pop()
-        elem = Element("part", False)
-        for c in children:
+    if data in ("definition", "metadata_def"):
+        elem = Element("metadata" if data == "metadata_def" else "part", True)
+        for c in tree.children[:-1]:
             if isinstance(c, Token):
-                if c.type == "ABSTRACT":
-                    elem.abstract = True
-                else:
+                if c.type != "META":
                     elem.name = unescape_name(c)
             elif c.data == "kind":
                 elem.keyword = _kind_keyword(c)
-            elif c.data == "direction":
-                elem.direction = str(c.children[0])
+            elif c.data == "short_name":
+                elem.short_name = _short_name(c)
+            elif c.data == "specialization":
+                elem.specializes.extend(_refs(c))
+        _attach_body(elem, tree.children[-1], document)
+        return elem
+
+    if data == "usage":
+        elem = Element("", False)
+        for c in tree.children[:-1]:
+            if isinstance(c, Token):
+                elem.name = unescape_name(c)
+            elif c.data == "kind":
+                elem.keyword = _kind_keyword(c)
+            elif c.data == "short_name":
+                elem.short_name = _short_name(c)
             elif c.data == "typing":
-                elem.types = _refs(c)
+                elem.types.extend(_typed_refs(c))
             elif c.data == "subsetting":
-                elem.specializes = _refs(c)
+                elem.specializes.extend(_refs(c))
             elif c.data == "redefinition":
-                elem.redefines = _refs(c)
-            elif c.data == "multiplicity":
-                if elem.multiplicity is not None:
-                    raise SysmlSyntaxError(
-                        "multiplicity given twice",
-                        line=c.meta.line, column=c.meta.column,
-                    )
-                elem.multiplicity = "..".join(str(t) for t in c.children)
+                elem.redefines.extend(_refs(c))
+            elif c.data == "reference_subsetting":
+                elem.references.extend(_refs(c))
+            elif c.data == "multiplicity_part":
+                for part in c.children:
+                    if part.data == "multiplicity":
+                        if elem.multiplicity is not None:
+                            raise SysmlSyntaxError("multiplicity given twice",
+                                                   line=part.meta.line, column=part.meta.column)
+                        elem.multiplicity = "..".join(str(t) for t in part.children)
+                    else:
+                        prop = str(part.children[0])
+                        if prop not in elem.multiplicity_props:
+                            elem.multiplicity_props.append(prop)
             elif c.data == "value":
-                elem.value = _value(c.children[0])
-        _attach_body(elem, body, document)
+                op_tree, expr = c.children
+                elem.value_op = " ".join(str(t) for t in op_tree.children)
+                elem.value = _value(expr)
+        elem.multiplicity_props.sort(key=("ordered", "nonunique").index)
+        _attach_body(elem, tree.children[-1], document)
+        return elem
+
+    if data == "metadata_usage":
+        elem = Element("metadata", False)
+        for c in tree.children[:-1]:
+            if isinstance(c, Token):
+                elem.at_shorthand = c.type == "AT"
+            elif c.data == "metadata_decl":
+                for d in c.children:
+                    if isinstance(d, Token):
+                        elem.name = unescape_name(d)
+                    elif d.data == "short_name":
+                        elem.short_name = _short_name(d)
+                    elif d.data == "ref":
+                        elem.types = [_ref(d)]
+            elif c.data == "about":
+                elem.about = _refs(c)
+        _attach_body(elem, tree.children[-1], document)
         return elem
 
     if data == "connect_stmt":
@@ -315,25 +437,64 @@ def _build(tree: Tree, document):
         return Relationship("allocate", _ref(a), _ref(b))
 
     if data == "import_stmt":
-        children = list(tree.children)
-        visibility = None
-        if isinstance(children[0], Token) and children[0].type == "VISIBILITY":
-            visibility = str(children.pop(0))
-        path_tree = children[0]
         segments, wildcard = [], None
-        for t in path_tree.children:
+        for t in tree.children[0].children:
             if isinstance(t, Token) and t.type == "WILDCARD":
                 wildcard = str(t)
             elif isinstance(t, Token) and t.type == "DCOLON":
                 continue
             else:
                 segments.append(unescape_name(t))
-        return Import(segments, wildcard=wildcard, visibility=visibility)
+        return Import(segments, wildcard=wildcard)
+
+    if data == "alias_stmt":
+        short, name, target = None, None, None
+        for c in tree.children[:-1]:
+            if isinstance(c, Token):
+                name = unescape_name(c)
+            elif c.data == "short_name":
+                short = _short_name(c)
+            elif c.data == "ref":
+                target = _ref(c)
+        alias = Alias(name, target, short_name=short)
+        body = tree.children[-1]
+        if isinstance(body, Tree) and body.data == "block":
+            for child in body.children:
+                part = _build_member(child, document)
+                if isinstance(part, str):
+                    alias.doc = part
+                else:
+                    raise SysmlSyntaxError("an alias body may only contain a doc comment",
+                                           line=child.meta.line, column=child.meta.column)
+        return alias
 
     if data == "doc_stmt":
         return clean_doc(str(tree.children[0]))
 
+    if data == "comment_stmt":
+        return _comment(str(tree.children[0]), tree)
+
     raise ValueError(f"unexpected node {data}")
+
+
+_COMMENT_HEAD = re.compile(
+    r"^comment\b\s*(?:<(?P<short>'(?:[^'\\]|\\.)*'|[^\W\d]\w*)>\s*)?"
+    r"(?P<name>'(?:[^'\\]|\\.)*'|(?!about\b)[^\W\d]\w*)?\s*"
+    r"(?:about\s+(?P<about>[^/]*?))?\s*$", re.S)
+
+
+def _comment(raw: str, tree) -> Comment:
+    head = raw[: raw.index("/*")]
+    m = _COMMENT_HEAD.match(head.strip())
+    if not m:
+        raise SysmlSyntaxError(f"cannot read comment header {head.strip()!r}",
+                               line=tree.meta.line, column=tree.meta.column)
+    about = []
+    if m.group("about"):
+        for part in m.group("about").split(","):
+            about.append(parse_ref(part.strip()))
+    return Comment(clean_doc(raw), name=unescape_name(m.group("name")) if m.group("name") else None,
+                   short_name=unescape_name(m.group("short")) if m.group("short") else None, about=about)
 
 
 def _expected_tokens(exc) -> list[str]:
@@ -393,7 +554,7 @@ def parse_document(text: str, path: str = "<memory>") -> Document:
         raise
     doc = Document(path)
     for child in tree.children:
-        node = _build(child, doc)
+        node = _build_member(child, doc)
         if isinstance(node, str):
             # A top-level `doc` has no owner to attach to: ignore it.
             continue
@@ -428,67 +589,126 @@ def parse_value(text: str) -> Value:
 INDENT = "    "
 
 
-def _render_doc(doc: str, indent: str) -> list[str]:
-    if "\n" not in doc:
-        return [f"{indent}doc /* {doc} */"]
-    lines = [f"{indent}doc /*"]
-    for line in doc.split("\n"):
+def _render_text_block(prefix: str, text: str, indent: str) -> list[str]:
+    if "\n" not in text:
+        return [f"{indent}{prefix} /* {text} */"]
+    lines = [f"{indent}{prefix} /*"]
+    for line in text.split("\n"):
         lines.append(f"{indent} * {line}".rstrip())
     lines.append(f"{indent} */")
     return lines
 
 
+def _render_doc(doc: str, indent: str) -> list[str]:
+    return _render_text_block("doc", doc, indent)
+
+
 def _render_refs(refs) -> str:
-    return ", ".join(str(r) for r in refs)
+    return ", ".join(("~" if r.conjugated else "") + r.render() for r in refs)
+
+
+def _prefix(node) -> list[str]:
+    parts = []
+    if getattr(node, "visibility", None):
+        parts.append(node.visibility)
+    for m in getattr(node, "metadata", []) or []:
+        parts.append(f"#{m}")
+    return parts
+
+
+def _modifier_words(elem: Element) -> list[str]:
+    words = [elem.direction] if elem.direction else []
+    if elem.abstract:
+        words.append("abstract")
+    words.extend(elem.modifiers)
+    return words
 
 
 def element_header(elem: Element) -> str:
     """The declaration line of an element, without its body."""
-    parts = []
-    if elem.abstract:
-        parts.append("abstract")
+    parts = _prefix(elem)
+    short = f"<{quote_name(elem.short_name)}>" if elem.short_name is not None else None
     if elem.is_package:
-        return f"package {quote_name(elem.name)}"
-    if elem.direction:
-        parts.append(elem.direction)
+        if elem.library_kind:
+            parts.append(elem.library_kind)
+        parts.append("package")
+        if short:
+            parts.append(short)
+        parts.append(quote_name(elem.name))
+        return " ".join(parts)
+    parts.extend(_modifier_words(elem))
     keyword = elem.keyword
-    if keyword in ("verification", "analysis"):
-        keyword += " case"
-    parts.append(keyword)
     if elem.is_definition:
-        parts.append("def")
+        parts.extend([keyword, "def"])
+        if short:
+            parts.append(short)
         parts.append(quote_name(elem.name))
         if elem.specializes:
             parts.append(":> " + _render_refs(elem.specializes))
         return " ".join(parts)
+    if keyword == "metadata":
+        decl = ""
+        if elem.name is not None:
+            decl = (f"{short} " if short else "") + f"{quote_name(elem.name)} : "
+        decl += _render_refs(elem.types)
+        if elem.at_shorthand and elem.name is None:
+            parts.append("@" + decl)
+        else:
+            parts.extend(["@" if elem.at_shorthand else "metadata", decl])
+        if elem.about:
+            parts.append("about " + _render_refs(elem.about))
+        return " ".join(parts)
+    if keyword:
+        parts.append(keyword)
+    if short:
+        parts.append(short)
     decl = quote_name(elem.name) if elem.name is not None else ""
     if elem.types:
         decl += (" : " if decl else ": ") + _render_refs(elem.types)
     if elem.multiplicity is not None:
         decl += f"[{elem.multiplicity}]"
+    if elem.multiplicity_props:
+        decl += (" " if decl else "") + " ".join(elem.multiplicity_props)
     if decl:
         parts.append(decl)
     if elem.specializes:
         parts.append(":> " + _render_refs(elem.specializes))
     if elem.redefines:
         parts.append(":>> " + _render_refs(elem.redefines))
+    if elem.references:
+        parts.append("::> " + _render_refs(elem.references))
     if elem.value is not None:
-        parts.append("= " + elem.value.render())
+        parts.append(f"{elem.value_op} " + elem.value.render())
     return " ".join(parts)
 
 
 def render_statement(node) -> str:
     if isinstance(node, Relationship):
         if node.kind == "connect":
-            return f"connect {node.source} to {node.target};"
+            return f"connect {node.source.render()} to {node.target.render()};"
         if node.kind == "satisfy":
-            return f"satisfy {node.target} by {node.source};"
+            return f"satisfy {node.target.render()} by {node.source.render()};"
         if node.kind == "allocate":
-            return f"allocate {node.source} to {node.target};"
+            return f"allocate {node.source.render()} to {node.target.render()};"
     if isinstance(node, Import):
-        vis = f"{node.visibility} " if node.visibility else ""
-        return f"{vis}import {node.render_path()};"
+        return " ".join(_prefix(node) + [f"import {node.render_path()};"])
+    if isinstance(node, Alias):
+        short = [f"<{quote_name(node.short_name)}>"] if node.short_name is not None else []
+        return " ".join(_prefix(node) + ["alias"] + short + [quote_name(node.name), "for", f"{node.target.render()};"])
+    if isinstance(node, Comment):
+        return "\n".join(_render_comment(node, ""))
     raise TypeError(node)
+
+
+def _render_comment(node: Comment, indent: str) -> list[str]:
+    head = _prefix(node) + ["comment"]
+    if node.short_name is not None:
+        head.append(f"<{quote_name(node.short_name)}>")
+    if node.name is not None:
+        head.append(quote_name(node.name))
+    if node.about:
+        head.append("about " + _render_refs(node.about))
+    return _render_text_block(" ".join(head), node.text, indent)
 
 
 def _has_block(node) -> bool:
@@ -515,6 +735,11 @@ def _render_members(members, indent: str, spacious: bool) -> list[str]:
 
 
 def _render_node(node, indent: str) -> list[str]:
+    if isinstance(node, Comment):
+        return _render_comment(node, indent)
+    if isinstance(node, Alias) and node.doc is not None:
+        head = render_statement(node)[:-1]
+        return [indent + head + " {", *_render_doc(node.doc, indent + INDENT), indent + "}"]
     if not isinstance(node, Element):
         return [indent + render_statement(node)]
     header = indent + element_header(node)
@@ -540,3 +765,22 @@ def serialize_node(node, indent: str = "") -> str:
 def serialize_document(doc: Document) -> str:
     lines = _render_members(doc.members, "", spacious=True)
     return "\n".join(lines) + "\n" if lines else ""
+
+
+def tree_signature(node):
+    """Structural dump of a parsed tree (every field except back-pointers), used
+    to check that serialization loses nothing: parse(serialize(t)) == t."""
+    import dataclasses
+
+    if isinstance(node, Document):
+        return [tree_signature(m) for m in node.members]
+    if isinstance(node, list):
+        return [tree_signature(x) for x in node]
+    if dataclasses.is_dataclass(node):
+        out = {"_": type(node).__name__}
+        for f in dataclasses.fields(node):
+            if f.name in ("owner", "document"):
+                continue
+            out[f.name] = tree_signature(getattr(node, f.name))
+        return out
+    return node

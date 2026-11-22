@@ -40,6 +40,6 @@ package VehicleFuelSystem {
         doc /* The fuel delivered to the engine shall be free of contaminants above 10ppm. */
     }
 
-    satisfy FuelDeliveryRequirement by Vehicle.pump;
-    satisfy FuelPurityRequirement by Vehicle.tank;
+    satisfy FuelDeliveryRequirement by Vehicle::pump;
+    satisfy FuelPurityRequirement by Vehicle::tank;
 }
