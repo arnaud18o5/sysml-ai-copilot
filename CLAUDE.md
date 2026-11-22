@@ -4,7 +4,7 @@ Context for Claude Code (or any coding agent) working in this repo.
 
 ## What this project is
 
-A prototype AI copilot for analyzing SysML v2 models. It parses a subset of the SysML v2 textual notation, loads the result into Neo4j as a graph with a native vector index, and answers natural-language questions (e.g. "what is the impact of element X?") by resolving the query to a graph element via vector search, then traversing relations.
+An agent-controllable MBSE workbench for SysML v2 models. `.sysml` text files are the source of truth; `syntax.py` parses them into a model tree (`model.py`), `workspace.py` resolves names / derives relations / validates, and `operations.py` (`ModelService`) exposes deterministic read and write operations. The same operations are served by the MCP server (`mbse-mcp`), the CLI (`mbse`) and the local web workbench (`mbse serve`). The goal is that a *small* model can do MBSE work through these tools. An optional Neo4j + vector-search pipeline (`ingest.py` / `query.py`) answers natural-language questions.
 
 See [README.md](README.md) for the full architecture and usage, and [CONTRIBUTING.md](CONTRIBUTING.md) for the branch/commit/PR workflow.
 
@@ -19,30 +19,36 @@ See [README.md](README.md) for the full architecture and usage, and [CONTRIBUTIN
 
 The `python` command on this machine is aliased to a non-venv interpreter. After `source venv/bin/activate`, prefer calling `venv/bin/python` explicitly (or `venv/bin/pip`) rather than bare `python`/`pip` when running anything in a non-interactive shell, or the wrong interpreter gets picked up silently.
 
-## Running the pipeline
+## Running things
 
 ```bash
-docker compose up -d                                   # start Neo4j
-venv/bin/python -m sysml_copilot.ingest data/sample.sysml
-venv/bin/python -m sysml_copilot.query "your question here"
+venv/bin/pip install -e ".[mcp,dev]"                   # once
+venv/bin/python -m pytest                              # test suite (must stay green)
+venv/bin/mbse -m data check                            # validate the example model
+venv/bin/mbse -m data serve                            # web workbench
+venv/bin/mbse -m data <operation> key=value ...        # any operation, JSON out
 ```
 
-Use the `run-pipeline` skill for this instead of re-deriving the steps.
+The optional Neo4j pipeline (`docker compose up -d`, then `ingest` / `query`) is covered by the `run-pipeline` skill.
 
 ## Architecture invariants to preserve
 
-- **Elements are identified by qualified name** (dot path from the package root), not a synthetic UUID. If you change `Element.id` generation, every relation and the Neo4j `MERGE` keys in `ingest.py` need to follow.
-- **Reference resolution in `parser.py` (`_Model.resolve`) walks through `TYPED_BY`** when a dotted-path segment isn't a direct child — this is what lets `connect tank.fuelOut to pump.fuelIn` resolve even though ports live on the *type* (`FuelTank`/`FuelPump`), not on the usage instance. Don't simplify this away without checking `connect_stmt` resolution still works on `data/sample.sysml`.
-- **`impact_analysis` in `query.py` deliberately excludes `CONTAINS`** from the traversed relationship types, to avoid flooding results with unrelated siblings under the same package. If you add relation types that should count toward impact, extend `IMPACT_RELATIONSHIP_TYPES`, don't just add `CONTAINS` back in.
+- **Text is the source of truth.** The model tree mirrors the notation, and `serialize_document(parse_document(t))` must be idempotent; `data/sample.sysml` is kept in canonical form (a test checks it byte for byte). Never store resolved pointers in the tree: references are `Ref` segment lists resolved by `Workspace`.
+- **Elements are identified by qualified name** (`Pkg.Vehicle.engine`, non-identifier segments quoted), not a synthetic UUID — computed in `Workspace._index`. The Neo4j `MERGE` keys in `ingest.py` use the same IDs.
+- **Name lookup inside an element walks through its types and supertypes** (`Workspace._lookup_in`): this is what lets `connect tank.fuelOut to pump.fuelIn` resolve although the ports live on `FuelTank`/`FuelPump`. Don't simplify it away.
+- **Operations are deterministic and transactional.** Every mutation goes through `ModelService._mutate` (snapshot, rollback on error, undo entry, autosave) and must either fully apply or raise `OpError` with a stable `code`. Renames/moves rely on `_capture_refs` + `_reanchor` to rewrite references; new mutations that can change what a name means must use them too. Return plain JSON-able dicts — they are shown verbatim to agents.
+- **A new operation is exposed in three places**: `operations.py` (method + the `*_OPERATIONS` catalogue), `mcp_server.py` (typed tool with a precise description — small models depend on it), and tests. The CLI and web API pick it up from the catalogue.
+- **Impact analysis deliberately excludes `CONTAINS`** (in `operations.IMPACT_RELATION_TYPES` and `query.IMPACT_RELATIONSHIP_TYPES`), to avoid flooding results with unrelated siblings. Extend those lists for new relation types; don't add `CONTAINS` back.
 - **Embeddings are local (fastembed, no API key)**, model configured in `config.py`. It's currently a multilingual model because the maintainer queries in French — don't swap back to an English-only model.
 
 ## Known limitations (don't treat as bugs to silently fix without discussion)
 
-- Only a subset of SysML v2 textual notation is supported: `import` is handled (unresolved, just recorded), but no feature specialization/redefinition, no `allocate`. See the open `parser`-labeled issues on the GitHub project board for the current, corpus-validated priority order.
-- Model modification (write-back) is not implemented — read-only ingestion + analysis only, by design (see README).
+- Only a subset of SysML v2 textual notation is supported (see README): no expressions/constraint bodies, no behaviour (successions, transitions, `perform`), no `bind`/`flow`/`ref`/metadata. Plain comments are dropped on write-back; `doc` is kept.
+- Name resolution is a pragmatic subset of SysML v2 scoping (no visibility rules, simplified redefinition semantics), with a last-resort global-name fallback reported as a `heuristic_reference` warning.
 - Retrieval quality is weak on elements with little/no `doc` text — this is a data/richness problem, not something to solve by changing the embedding model further without checking with the maintainer first.
 
 ## Available skills
 
 - `run-pipeline` — starts Neo4j, runs ingestion, runs a query, using the correct venv interpreter.
-- `extend-grammar` — checklist for adding a new SysML v2 construct to the parser (grammar rule, walker case, resolver interaction, test against `data/sample.sysml`).
+- `extend-grammar` — checklist for adding a new SysML v2 construct (grammar, tree builder, serializer, resolution, operations, tests).
+- `edit-model` — how to inspect and change a SysML v2 model through the `mbse` operations instead of editing `.sysml` text by hand.
