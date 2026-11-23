@@ -123,6 +123,27 @@ def test_relationship_metadata_is_resolved_and_rewritten_on_rename():
     assert str(rel.metadata[0]) == "Tag"
 
 
+def test_flow_item_type_resolves_and_interface_endpoints_connect_through_types():
+    ws = Workspace.from_text("""package P {
+    attribute def Fuel;
+    part def A { port p; }
+    part def B { port q; }
+    part a : A;
+    part b : B;
+
+    flow of Fuel from a.p to b.q;
+    interface def I;
+    interface i1 : I connect a.p to b.q;
+}""")
+    assert codes(ws, "error") == []
+    flow = next(n for n in ws.nodes() if type(n).__name__ == "Relationship" and n.kind == "flow")
+    res = ws.resolve_node_ref(flow, flow.item_type)
+    assert res.ok and ws.id_of(res.target) == "P.Fuel"
+    # The inline connector resolves exactly like a nested `connect` would,
+    # through the interface usage's endpoints' types (a : A, b : B).
+    assert edges(ws, "CONNECTS_TO") == [("P.A.p", "P.B.q")]
+
+
 def test_duplicates_are_reported_not_silently_merged():
     ws = Workspace.from_text("package P { part def A; part def A; }")
     assert "duplicate_name" in codes(ws, "error")

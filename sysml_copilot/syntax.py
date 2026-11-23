@@ -55,6 +55,8 @@ GRAMMAR = rf"""
                 | connect_stmt
                 | satisfy_stmt
                 | allocate_stmt
+                | flow_stmt
+                | dependency_stmt
                 | import_stmt
                 | alias_stmt
                 | doc_stmt
@@ -76,7 +78,11 @@ GRAMMAR = rf"""
     metadata_def: META "def" short_name? name specialization* body
     specialization: (":>" | "specializes") ref ("," ref)*
 
-    usage: kind? short_name? name? usage_spec* value? body
+    usage: kind? short_name? name? usage_spec* value? connector_ends? body
+    // `interface foo : I connect a to b;`: a connector's ends given inline
+    // on its own usage declaration, instead of (or alongside) a nested
+    // `connect` statement in its body.
+    connector_ends: "connect" ref "to" ref
     ?usage_spec: typing | subsetting | redefinition | reference_subsetting | multiplicity_part
     typing: (":" | "defined" "by") typed_ref ("," typed_ref)*
     typed_ref: CONJ? ref
@@ -143,6 +149,12 @@ GRAMMAR = rf"""
     connect_stmt: "connect" ref "to" ref ";"
     satisfy_stmt: "satisfy" "requirement"? ref "by" ref ";"
     allocate_stmt: "allocate" ref "to" ref ";"
+    // `from` and the item type are both optional: `flow a to b;`,
+    // `flow from a to b;` and `flow of Item from a to b;` all occur.
+    flow_stmt: "flow" ("of" ref)? flow_ends ";"
+    flow_ends: "from" ref "to" ref
+             | ref "to" ref
+    dependency_stmt: "dependency" ("from" ref | ref) "to" ref ";"
 
     import_stmt: "import" import_path ";"
     !visibility: "private" | "public" | "protected"
@@ -478,6 +490,7 @@ def _build(tree: Tree, document):
 
     if data == "usage":
         elem = Element("", False)
+        connector = None
         for c in tree.children[:-1]:
             if isinstance(c, Token):
                 elem.name = unescape_name(c)
@@ -508,8 +521,18 @@ def _build(tree: Tree, document):
                 op_tree, expr = c.children
                 elem.value_op = " ".join(str(t) for t in op_tree.children)
                 elem.value = _value(expr)
+            elif c.data == "connector_ends":
+                if elem.keyword not in ("interface", "connection"):
+                    raise SysmlSyntaxError(
+                        "inline 'connect ... to ...' is only allowed on an interface or "
+                        "connection usage", line=c.meta.line, column=c.meta.column)
+                a, b = _refs(c)
+                connector = Relationship("connect", a, b)
         elem.multiplicity_props.sort(key=("ordered", "nonunique").index)
         _attach_body(elem, tree.children[-1], document)
+        if connector is not None:
+            connector.owner, connector.document = elem, document
+            elem.members.insert(0, connector)
         return elem
 
     if data == "metadata_usage":
@@ -541,6 +564,20 @@ def _build(tree: Tree, document):
     if data == "allocate_stmt":
         a, b = tree.children
         return Relationship("allocate", _ref(a), _ref(b))
+
+    if data == "flow_stmt":
+        item_type, source, target = None, None, None
+        for c in tree.children:
+            if c.data == "ref":
+                item_type = _ref(c)
+            elif c.data == "flow_ends":
+                a, b = (gc for gc in c.children if isinstance(gc, Tree) and gc.data == "ref")
+                source, target = _ref(a), _ref(b)
+        return Relationship("flow", source, target, item_type=item_type)
+
+    if data == "dependency_stmt":
+        a, b = tree.children
+        return Relationship("dependency", _ref(a), _ref(b))
 
     if data == "import_stmt":
         segments, wildcard = [], None
@@ -801,6 +838,11 @@ def render_statement(node) -> str:
             return pre + f"satisfy {node.target.render()} by {node.source.render()};"
         if node.kind == "allocate":
             return pre + f"allocate {node.source.render()} to {node.target.render()};"
+        if node.kind == "flow":
+            of_ = f" of {node.item_type.render()}" if node.item_type is not None else ""
+            return pre + f"flow{of_} from {node.source.render()} to {node.target.render()};"
+        if node.kind == "dependency":
+            return pre + f"dependency from {node.source.render()} to {node.target.render()};"
     if isinstance(node, Import):
         return " ".join(_prefix(node) + [f"import {node.render_path()};"])
     if isinstance(node, Alias):
