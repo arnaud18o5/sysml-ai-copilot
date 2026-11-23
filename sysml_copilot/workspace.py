@@ -33,12 +33,14 @@ from dataclasses import dataclass, field
 
 from .model import (
     COMPATIBLE_TYPING,
+    Alias,
     Document,
     Element,
     Import,
     Ref,
     Relationship,
     format_path,
+    separators_for,
 )
 from .syntax import parse_document, parse_ref, serialize_document, SysmlSyntaxError
 
@@ -238,6 +240,8 @@ class Workspace:
         try:
             if isinstance(node, Import):
                 res = self._resolve_import_target(node)
+            elif isinstance(node, Element) and node.owner is not None and any(r is ref for r in node.redefines):
+                res = self._resolve_redefined(node, ref)
             else:
                 scope, document = reference_scope(node)
                 res = self._resolve_uncached(ref, scope, document)
@@ -245,6 +249,22 @@ class Workspace:
             self._in_progress.discard(key)
         self._cache[key] = res
         return res
+
+    def _resolve_redefined(self, node: Element, ref: Ref) -> Resolution:
+        """A redefined feature is looked up among what the owner *inherits*
+        (its types and supertypes), never among its own members - otherwise
+        `attribute :>> mass` would find itself."""
+        owner = node.owner
+        if len(ref.segments) == 1:
+            visited = {(id(owner), ref.segments[0])}
+            for sref in [*owner.types, *owner.specializes, *owner.redefines]:
+                sup = self.resolve_node_ref(owner, sref)
+                if sup.ok:
+                    hits, _ = self._lookup_in(sup.target, ref.segments[0], visited)
+                    if hits:
+                        return Resolution([hits[0]], [HOP_INHERITED])
+        scope, document = reference_scope(node)
+        return self._resolve_uncached(ref, scope, document)
 
     def resolve(self, ref: Ref, scope: Element | None, document: Document | None,
                 allow_heuristic=True) -> Resolution:
@@ -281,6 +301,10 @@ class Workspace:
                  if isinstance(m, Element) and m.effective_name == name]
         if roots:
             return roots, HOP_SCOPE
+        for d in self.documents:
+            aliased = self._aliased(d.members, name)
+            if aliased:
+                return aliased, HOP_IMPORT
         if document is not None:
             imported = self._imported(document.members, name, set())
             if imported:
@@ -304,6 +328,9 @@ class Workspace:
         owned = [m for m in ns.members if isinstance(m, Element) and m.effective_name == name]
         if owned:
             return owned, HOP_MEMBER
+        aliased = self._aliased(ns.members, name)
+        if aliased:
+            return aliased, HOP_IMPORT
         imported = self._imported(ns.members, name, visited)
         if imported:
             return imported, HOP_IMPORT
@@ -315,6 +342,14 @@ class Workspace:
                 if hits:
                     return hits, HOP_INHERITED
         return [], None
+
+    def _aliased(self, members, name):
+        for m in members:
+            if isinstance(m, Alias) and m.name == name:
+                res = self.resolve_node_ref(m, m.target)
+                if res.ok:
+                    return [res.target]
+        return []
 
     def _imported(self, members, name, visited):
         for imp in members:
@@ -365,6 +400,7 @@ class Workspace:
                 res = self.resolve(cand, scope, document, allow_heuristic=False)
                 if res.ok and len(res.path) >= n - k and all(
                         a is b for a, b in zip(res.path[len(res.path) - (n - k):], path[k:])):
+                    cand.seps = separators_for(res.path) or None
                     if best is None or len(cand.segments) < len(best.segments):
                         best = cand
                     break
@@ -378,7 +414,8 @@ class Workspace:
     def ref_to(self, el: Element, scope, document) -> Ref:
         chain = list(reversed(list(el.ancestors()))) + [el]
         hops = [HOP_SCOPE] + [HOP_MEMBER] * (len(chain) - 1)
-        return self.ref_for(chain, hops, scope, document) or Ref(el.path_names())
+        return self.ref_for(chain, hops, scope, document) or \
+            Ref(el.path_names(), seps=separators_for(chain) or None)
 
     # -------------------------------------------------------------- derive
 
@@ -459,9 +496,9 @@ class Workspace:
                 out.append(Diagnostic(
                     "warning", "heuristic_reference",
                     f"{where}: '{ref}' ({role}) is not visible from here and was matched by name "
-                    f"only" + (f"; write '{better}'" if better else ""),
+                    f"only" + (f"; write '{better.render()}'" if better else ""),
                     element=self._node_element_id(node), document=node.document.path,
-                    suggestions=[str(better)] if better else []))
+                    suggestions=[better.render()] if better else []))
             target = res.target
             if isinstance(node, Element) and role == "type":
                 if not target.is_definition:
@@ -470,7 +507,7 @@ class Workspace:
                         f"{where} is typed by {self.id_of(target)}, which is a {target.kind}, "
                         f"not a definition",
                         element=self.id_of(node), document=node.document.path))
-                elif target.keyword not in COMPATIBLE_TYPING.get(node.keyword, {node.keyword}):
+                elif node.keyword and target.keyword not in COMPATIBLE_TYPING.get(node.keyword, {node.keyword}):
                     out.append(Diagnostic(
                         "warning", "typing_kind_mismatch",
                         f"{where} ({node.keyword}) is typed by {self.id_of(target)} ({target.kind})",

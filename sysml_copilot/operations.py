@@ -26,6 +26,8 @@ import re
 from collections import deque
 
 from .model import (
+    Alias,
+    Comment,
     DIRECTIONS,
     ELEMENT_KEYWORDS,
     KEYWORD_BY_KIND,
@@ -320,6 +322,7 @@ class ModelService:
                 key = id(ref)
                 old = rewritten[key]["from"] if key in rewritten else str(ref)
                 ref.segments[:] = new.segments
+                ref.seps = new.seps
                 rewritten[key] = {"in": self._label(node), "role": role, "from": old, "to": str(ref)}
                 progress = True
                 self.ws.reindex()
@@ -962,7 +965,8 @@ class ModelService:
                     refs.append(self.ws.ref_to(target, scope, document))
                 else:
                     res = self._resolve_path(s, "subsetted feature")
-                    refs.append(self.ws.ref_for(res.path, res.hops, scope, document) or Ref(res.target.path_names()))
+                    refs.append(self.ws.ref_for(res.path, res.hops, scope, document)
+                                or self.ws.ref_to(res.target, scope, document))
             el.specializes = refs
         if value is not None:
             v = _value_from_input(value, value_kind)
@@ -1064,7 +1068,7 @@ class ModelService:
             removed_refs = []
             for node, role, ref in deps:
                 removed_refs.append({"in": self._label(node), "role": role, "ref": str(ref)})
-                if isinstance(node, (Relationship, Import)):
+                if isinstance(node, (Relationship, Import, Alias, Comment)):
                     container = node.owner.members if node.owner else node.document.members
                     if node in container:
                         container.remove(node)

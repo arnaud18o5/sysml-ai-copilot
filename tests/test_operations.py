@@ -42,7 +42,7 @@ def test_values(svc):
                                     "value": f"{PKG}.FuelTank.capacity", "value_kind": "ref"}))
     text = src(svc)
     for line in ('attribute mass : Real = 1200 [kg];', 'attribute label : String = "tank A";',
-                 'attribute on : Boolean = true;', 'attribute cap : Real = FuelTank.capacity;'):
+                 'attribute on : Boolean = true;', 'attribute cap : Real = FuelTank::capacity;'):
         assert line in text
     assert call(svc, "update_element", {"element": f"{owner}.mass", "clear": ["value"]})["ok"]
     assert "attribute mass : Real;" in src(svc)
@@ -55,7 +55,7 @@ def test_rename_rewrites_all_references(svc):
     text = src(svc)
     assert "part mainTank : 'Fuel Tank';" in text
     assert "connect mainTank.fuelOut to pump.fuelIn;" in text
-    assert "satisfy FuelPurityRequirement by Vehicle.mainTank;" in text
+    assert "satisfy FuelPurityRequirement by Vehicle::mainTank;" in text
     assert svc.validate()["errors"] == 0
 
 
@@ -63,7 +63,7 @@ def test_move_rewrites_references(svc):
     ok(call(svc, "create_element", {"kind": "package", "name": "Parts", "owner": PKG}))
     r = ok(call(svc, "move_element", {"element": f"{PKG}.FuelPump", "new_owner": f"{PKG}.Parts"}))
     assert r["moved"] == f"{PKG}.Parts.FuelPump"
-    assert "part pump : Parts.FuelPump;" in src(svc)
+    assert "part pump : Parts::FuelPump;" in src(svc)
     assert svc.validate()["errors"] == 0
     bad = call(svc, "move_element", {"element": f"{PKG}.Parts", "new_owner": f"{PKG}.Parts.FuelPump"})
     assert bad["error"]["code"] == "invalid_owner"
@@ -160,7 +160,7 @@ def test_multi_document_workspace(tmp_path, sample_path):
     ok(call(svc, "create_element", {"kind": "part def", "name": "Sensor", "owner": "Library"}))
     ok(call(svc, "create_element", {"kind": "part", "name": "sensor", "owner": f"{PKG}.Vehicle",
                                     "type": "Library.Sensor"}))
-    assert "part sensor : Library.Sensor;" in svc.get_source(element=f"{PKG}.Vehicle")["source"]
+    assert "part sensor : Library::Sensor;" in svc.get_source(element=f"{PKG}.Vehicle")["source"]
     svc.save()
     reloaded = ModelService([os.path.dirname(sample_path)])
     assert reloaded.validate()["errors"] == 0

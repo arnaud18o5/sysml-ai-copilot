@@ -44,7 +44,11 @@ ELEMENT_KEYWORDS = [
     "view",
     "viewpoint",
     "concern",
+    "metadata",
 ]
+
+# Keywords with their own grammar rule (not the generic `<kw> name : T` shape).
+SPECIAL_KEYWORDS = {"metadata"}
 
 # Kind names, e.g. "part" -> ("PartDefinition", "PartUsage").
 _KIND_STEMS = {
@@ -68,6 +72,7 @@ _KIND_STEMS = {
     "view": "View",
     "viewpoint": "Viewpoint",
     "concern": "Concern",
+    "metadata": "Metadata",
 }
 
 KIND_BY_KEYWORD = {}
@@ -76,6 +81,7 @@ for _kw, _stem in _KIND_STEMS.items():
     KIND_BY_KEYWORD[(_kw, True)] = _stem + "Definition"
     KIND_BY_KEYWORD[(_kw, False)] = _stem + "Usage"
 KIND_BY_KEYWORD[("package", False)] = "Package"
+KIND_BY_KEYWORD[("", False)] = "Usage"  # keyword-less usage, e.g. `:>> mass = 1200;`
 for (_kw, _is_def), _kind in KIND_BY_KEYWORD.items():
     KEYWORD_BY_KIND[_kind] = (_kw, _is_def)
 
@@ -102,13 +108,22 @@ COMPATIBLE_TYPING = {
     "view": {"view"},
     "viewpoint": {"viewpoint"},
     "concern": {"concern"},
+    "metadata": {"metadata"},
 }
 
 RESERVED_WORDS = {
     "package", "def", "abstract", "in", "out", "inout", "import", "private",
-    "public", "connect", "to", "satisfy", "by", "allocate", "doc", "true",
-    "false", "specializes", "subsets", "redefines", "case", "use",
+    "public", "protected", "connect", "to", "satisfy", "by", "allocate", "doc", "true",
+    "false", "specializes", "subsets", "redefines", "references", "case", "use",
+    "standard", "library", "alias", "for", "comment", "about", "ref", "readonly",
+    "derived", "end", "constant", "variation", "variant", "individual", "ordered", "nonunique",
+    "defined", "default",
 } | {kw for kw in ELEMENT_KEYWORDS if " " not in kw}
+
+VISIBILITIES = ("private", "protected", "public")
+
+# Feature/definition modifiers, in the canonical order they are written.
+MODIFIERS = ("abstract", "variation", "variant", "individual", "readonly", "derived", "end", "constant", "ref")
 
 DIRECTIONS = ("in", "out", "inout")
 
@@ -151,9 +166,27 @@ class Ref:
     """A reference as written in the text: a list of name segments."""
 
     segments: list[str]
+    conjugated: bool = False  # `~PortDef` (typing by the conjugate of a port definition)
+    # Separator written before each segment after the first: "::" qualifies a
+    # name inside a namespace (Pkg::Engine), "." chains features (tank.fuelOut).
+    seps: list[str] | None = None
 
     def __str__(self) -> str:
+        """Dotted form, as used in element IDs (not necessarily valid SysML)."""
         return format_path(self.segments)
+
+    def render(self) -> str:
+        """SysML text of the reference, with its `::` / `.` separators."""
+        seps = self.seps if self.seps and len(self.seps) == len(self.segments) - 1 else None
+        out = quote_name(self.segments[0])
+        for i, seg in enumerate(self.segments[1:]):
+            out += (seps[i] if seps else "::") + quote_name(seg)
+        return out
+
+
+def separators_for(path) -> list[str]:
+    """`.` after a usage (feature chain), `::` after a package or definition."""
+    return ["." if getattr(el, "is_usage", False) else "::" for el in path[:-1]]
 
 
 @dataclass(eq=False)
@@ -170,11 +203,11 @@ class Value:
             body = self.text.replace("\\", "\\\\").replace('"', '\\"')
             out = f'"{body}"'
         elif self.kind == "ref":
-            out = str(self.ref)
+            out = self.ref.render()
         else:
             out = self.text
         if self.unit is not None:
-            out += f" [{self.unit}]"
+            out += f" [{self.unit.render()}]"
         return out
 
     def to_json(self):
@@ -204,7 +237,7 @@ class Node:
 
 @dataclass(eq=False)
 class Element(Node):
-    keyword: str  # "package", "part", "use case", ...
+    keyword: str  # "package", "part", "use case", ... ("" for a keyword-less usage)
     is_definition: bool
     name: str | None = None
     abstract: bool = False
@@ -212,8 +245,18 @@ class Element(Node):
     types: list[Ref] = field(default_factory=list)  # `:`  (FeatureTyping)
     specializes: list[Ref] = field(default_factory=list)  # `:>` (Subclassification / Subsetting)
     redefines: list[Ref] = field(default_factory=list)  # `:>>`
+    references: list[Ref] = field(default_factory=list)  # `::>` (ReferenceSubsetting)
     multiplicity: str | None = None
+    multiplicity_props: list[str] = field(default_factory=list)  # "ordered", "nonunique"
     value: Value | None = None
+    value_op: str = "="  # "=", ":=", "default =", "default :="
+    visibility: str | None = None
+    short_name: str | None = None  # `<'1.1'>`
+    modifiers: list[str] = field(default_factory=list)  # see MODIFIERS (excluding abstract)
+    metadata: list[Ref] = field(default_factory=list)  # prefix annotations `#Safety`
+    about: list[Ref] = field(default_factory=list)  # metadata usages: `about x, y`
+    library_kind: str | None = None  # packages: "library" | "standard library"
+    at_shorthand: bool = False  # metadata usage written `@T`
     doc: str | None = None
     members: list[Node] = field(default_factory=list)
     owner: "Element | None" = None
@@ -222,7 +265,15 @@ class Element(Node):
 
     @property
     def kind(self) -> str:
+        if self.keyword == "" and "ref" in self.modifiers:
+            return "ReferenceUsage"
+        if self.is_package and self.library_kind:
+            return "LibraryPackage"
         return KIND_BY_KEYWORD[(self.keyword, self.is_definition)]
+
+    @property
+    def is_ref(self) -> bool:
+        return "ref" in self.modifiers
 
     @property
     def is_package(self) -> bool:
@@ -274,6 +325,12 @@ class Element(Node):
             yield "specializes", r
         for r in self.redefines:
             yield "redefines", r
+        for r in self.references:
+            yield "references", r
+        for r in self.metadata:
+            yield "metadata", r
+        for r in self.about:
+            yield "about", r
         if self.value is not None and self.value.ref is not None:
             yield "value", self.value.ref
 
@@ -329,6 +386,43 @@ class Import(Node):
     def refs(self):
         if self.path:
             yield "import", self.path_ref()
+
+
+@dataclass(eq=False)
+class Alias(Node):
+    """`alias Short for Some::Long::Name;`: another name for an element."""
+
+    name: str
+    target: Ref
+    short_name: str | None = None
+    visibility: str | None = None
+    doc: str | None = None
+    owner: "Element | None" = None
+    document: "Document | None" = None
+
+    @property
+    def effective_name(self):
+        return self.name
+
+    def refs(self):
+        yield "alias", self.target
+
+
+@dataclass(eq=False)
+class Comment(Node):
+    """`comment [name] [about a, b] /* text */` (plain `/* */` comments are not kept)."""
+
+    text: str
+    name: str | None = None
+    short_name: str | None = None
+    about: list[Ref] = field(default_factory=list)
+    visibility: str | None = None
+    owner: "Element | None" = None
+    document: "Document | None" = None
+
+    def refs(self):
+        for r in self.about:
+            yield "about", r
 
 
 @dataclass(eq=False)

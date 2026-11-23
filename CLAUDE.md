@@ -37,8 +37,8 @@ Tests run with `MBSE_SEMANTIC=off` (set in `tests/conftest.py`) and a fake embed
 
 ## Architecture invariants to preserve
 
-- **Text is the source of truth.** The model tree mirrors the notation, and `serialize_document(parse_document(t))` must be idempotent; `data/sample.sysml` is kept in canonical form (a test checks it byte for byte). Never store resolved pointers in the tree: references are `Ref` segment lists resolved by `Workspace`.
-- **Elements are identified by qualified name** (`Pkg.Vehicle.engine`, non-identifier segments quoted), not a synthetic UUID — computed in `Workspace._index`.
+- **Text is the source of truth.** The model tree mirrors the notation, and serialization must be lossless: `tree_signature(parse(serialize(t))) == tree_signature(t)` (checked in tests and by the conformance harness); `data/sample.sysml` is kept in canonical form (a test checks it byte for byte). Never store resolved pointers in the tree: references are `Ref` segment lists resolved by `Workspace`.
+- **Elements are identified by qualified name** (`Pkg.Vehicle.engine`, non-identifier segments quoted), not a synthetic UUID — computed in `Workspace._index`. IDs always use `.`, but SysML text must not: render references with `Ref.render()` (keeps `::` vs `.`), never `str(ref)`, and give generated refs separators via `separators_for`.
 - **Name lookup inside an element walks through its types and supertypes** (`Workspace._lookup_in`): this is what lets `connect tank.fuelOut to pump.fuelIn` resolve although the ports live on `FuelTank`/`FuelPump`. Don't simplify it away.
 - **Several processes may share the model files** (web UI, MCP server, CLI, git). `call()` runs `ModelService.sync()` before every operation: reload if nothing is unsaved, otherwise refuse writes with `conflict`. Don't bypass `call()` in front-ends.
 - **Operations are deterministic and transactional.** Every mutation goes through `ModelService._mutate` (snapshot, rollback on error, undo entry, autosave) and must either fully apply or raise `OpError` with a stable `code`. Renames/moves rely on `_capture_refs` + `_reanchor` to rewrite references; new mutations that can change what a name means must use them too. Return plain JSON-able dicts — they are shown verbatim to agents.
@@ -48,7 +48,7 @@ Tests run with `MBSE_SEMANTIC=off` (set in `tests/conftest.py`) and a fake embed
 
 ## Known limitations (don't treat as bugs to silently fix without discussion)
 
-- Only a subset of SysML v2 textual notation is supported (see README): no expressions/constraint bodies, no behaviour (successions, transitions, `perform`), no `bind`/`flow`/`ref`/metadata. Plain comments are dropped on write-back; `doc` is kept.
+- Only a subset of SysML v2 textual notation is supported (see README): no expressions/constraint bodies, no behaviour (successions, transitions, `perform`), no `subject`/`bind`/`flow`. Plain comments are dropped on write-back; `doc` and `comment` are kept.
 - Name resolution is a pragmatic subset of SysML v2 scoping (no visibility rules, simplified redefinition semantics), with a last-resort global-name fallback reported as a `heuristic_reference` warning.
 - Semantic retrieval is only as good as the element names and `doc` text, and the default model is small (a 1 GB multilingual mpnet was tried and wasn't clearly better on the sample). Don't change the default model without checking with the maintainer first.
 

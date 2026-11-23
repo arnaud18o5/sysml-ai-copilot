@@ -4,7 +4,8 @@ Measures, for every `.sysml` file of the pinned SysML-v2-Release tag
 (examples, training, validation and the standard library):
 
   parse      the file is accepted by our grammar
-  roundtrip  serialize(parse(text)) is idempotent
+  roundtrip  parse(serialize(parse(text))) is the same model (nothing lost)
+             and serializing again gives the same text
   resolve    the file (with the standard library loaded) has no
              unresolved / ambiguous reference errors
 
@@ -29,7 +30,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from sysml_copilot.syntax import SysmlSyntaxError, parse_document, serialize_document  # noqa: E402
+from sysml_copilot.syntax import SysmlSyntaxError, parse_document, serialize_document, tree_signature  # noqa: E402
 from sysml_copilot.workspace import Workspace  # noqa: E402
 
 RELEASE_REPO = "https://github.com/Systems-Modeling/SysML-v2-Release.git"
@@ -95,7 +96,11 @@ def measure(corpus):
         parsed[rel] = doc
         try:
             out = serialize_document(doc)
-            entry["roundtrip"] = serialize_document(parse_document(out, rel)) == out
+            again = parse_document(out, rel)
+            same_tree = tree_signature(again) == tree_signature(doc)
+            entry["roundtrip"] = same_tree and serialize_document(again) == out
+            if not same_tree:
+                entry["error"] = "roundtrip: the serialized text does not parse back to the same model"
         except Exception as exc:
             entry["error"] = f"roundtrip: {exc}"
     # Resolution: load every parsed library file plus the file itself.

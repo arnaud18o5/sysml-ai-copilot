@@ -66,7 +66,7 @@ def test_heuristic_and_ambiguous_references():
     satisfy R by z;
 }""")
     diags = {d.code: d for d in ws.diagnostics()}
-    assert diags["heuristic_reference"].suggestions == ["A.x"]
+    assert diags["heuristic_reference"].suggestions == ["A::x"]
     assert set(diags["ambiguous_reference"].suggestions) == {"P.B.z", "P.C.z"}
 
 
@@ -89,3 +89,19 @@ def test_typing_checks_and_cycles():
 def test_duplicates_are_reported_not_silently_merged():
     ws = Workspace.from_text("package P { part def A; part def A; }")
     assert "duplicate_name" in codes(ws, "error")
+
+
+def test_alias_and_redefinition_resolution():
+    ws = Workspace.from_text("""package P {
+    alias Engine2 for Engine;
+    part def Engine { attribute mass : Real; }
+    part def Light :> Engine {
+        attribute :>> mass = 900;
+    }
+    part e : Engine2;
+    comment about Engin /* typo */
+}""")
+    assert ("P.e", "P.Engine") in edges(ws, "TYPED_BY")
+    assert ("P.Light.mass", "P.Engine.mass") in edges(ws, "REDEFINES")
+    unresolved = [d for d in ws.diagnostics() if d.code == "unresolved_reference"]
+    assert len(unresolved) == 1 and "Engin" in unresolved[0].message
