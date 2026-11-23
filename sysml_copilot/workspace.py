@@ -189,6 +189,7 @@ class Workspace:
         self._in_progress: set[int] = set()
         self._edges = None
         self._diagnostics = None
+        self._name_index = None
         for d in self.all_documents():
             for n in d.walk():
                 if isinstance(n, Element):
@@ -579,10 +580,13 @@ class Workspace:
         return f"'{render_statement(node)}'{owner}"
 
     def suggest(self, name: str, limit=3) -> list[str]:
-        names = {}
-        for el in self.elements(include_library=True):
-            if el.effective_name:
-                names.setdefault(el.effective_name, []).append(self.id_of(el))
+        if self._name_index is None:
+            names = {}
+            for el in self.elements(include_library=True):
+                if el.effective_name:
+                    names.setdefault(el.effective_name, []).append(self.id_of(el))
+            self._name_index = names
+        names = self._name_index
         close = difflib.get_close_matches(name, list(names), n=limit, cutoff=0.6)
         lowered = [n for n in names if n.lower() == name.lower() and n not in close]
         out = []
