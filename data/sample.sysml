@@ -5,8 +5,11 @@ package VehicleFuelSystem {
 
     metadata def Critical;
 
-    case def Diagnose {
-        doc /* Investigates reported fuel system faults. */
+    calc def ComputeMargin {
+        in cap : Real;
+        in reserve : Real;
+
+        cap - reserve
     }
 
     part def Engine {
@@ -17,6 +20,7 @@ package VehicleFuelSystem {
         port fuelOut : FuelPort;
         attribute capacity : Real = 60;
         attribute fuelType : String = "diesel";
+        attribute calibrationPoints : Real = (25, 50, 75, 100);
     }
 
     part def FuelPump {
@@ -33,7 +37,7 @@ package VehicleFuelSystem {
         connect tank.fuelOut to pump.fuelIn;
         #Critical connect pump.fuelOut to engine.fuelIn;
 
-        attribute capacityMargin : Real = tank.capacity - 10;
+        attribute capacityMargin : Real = ComputeMargin(tank.capacity, 10);
 
         constraint {
             tank.capacity > 0 and capacityMargin > -10
@@ -52,6 +56,21 @@ package VehicleFuelSystem {
         doc /* The fuel delivered to the engine shall be free of contaminants above 10ppm. */
     }
 
-    satisfy FuelDeliveryRequirement by Vehicle::pump;
+    case def Diagnose {
+        doc /* Investigates a reported fuel system fault on a given vehicle. */
+
+        in vehicle : Vehicle;
+        in reportedIssue : String;
+
+        constraint {
+            vehicle.tank.capacity > 0 and vehicle.capacityMargin > -10
+        }
+    }
+
+    verification def VerifyCapacity :> Diagnose {
+        doc /* Confirms the fuel tank still holds its rated capacity after a diagnostic case. */
+    }
+
+    #Critical satisfy FuelDeliveryRequirement by Vehicle::pump;
     satisfy FuelPurityRequirement by Vehicle::tank;
 }
