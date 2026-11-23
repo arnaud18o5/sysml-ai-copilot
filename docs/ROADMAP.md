@@ -17,7 +17,7 @@ Every phase has measurable exit criteria. Three numbers are tracked from the sta
 
 | Metric | Tool | Now (2026-11) |
 |---|---|---|
-| OMG SysML v2 release files that parse / round-trip / resolve | `tools/conformance.py report` | 144 / 144 / 26 of 310 (46.5% / 46.5% / 8.4%), was 66 / 66 / 23 before step 1.3 |
+| OMG SysML v2 release files that parse / round-trip / resolve | `tools/conformance.py report` | 165 / 165 / 30 of 310 (53.2% / 53.2% / 9.7%), was 144 / 144 / 26 before this slice of step 1.6 |
 | Agent task success, small model | `evals/run.py --model claude-haiku-5-5` | not measured yet (needs an API key) |
 | Agent task suite size | `evals/tasks.json` | 14 tasks, all solvable by their reference solution |
 
@@ -44,7 +44,7 @@ Goal: the official examples load. Order the work by what blocks the most files: 
 | 1.3 ✅ | Expressions: arithmetic, comparison, boolean, invocation, `.` and `->` navigation, collection literals (not done: `..` ranges, `#()` indexing, named/keyword arguments, `->forAll { in x: T; ... }`-style block arguments) | attribute values, `constraint` bodies, `calc` |
 | 1.4 | Requirements: `subject`, `require constraint`, `assume`, `actor`, `stakeholder`, `frame concern`, `verify` | requirement semantics and verification |
 | 1.5 | Behaviour: `action` bodies, `first`/`then`/succession, `fork`/`join`/`merge`/`decide`, `perform`, `accept`/`send`, `state` bodies, `entry`/`do`/`exit`, `transition`, `exhibit` | activity and state machine views, simulation |
-| 1.6 | Interfaces and flows: `bind`, `flow`, `interface` with `end`, `connection` with `end`, `message`, `succession flow` | complete internal block views |
+| 1.6 (partial) | Interfaces and flows: `bind`, `flow`, `interface` with `end`, `connection` with `end`, `message`, `succession flow` (done so far: `flow [of Item] [from] a to b`, `dependency [from] a to b`, inline `connect a to b` on an interface/connection usage; not done: `bind`, `end`, `message`, `succession flow` - the last collides with an existing `expr_stmt` parsing gap, see below) | complete internal block views |
 | 1.7 | `individual`, `snapshot`/`timeslice`, `variation`/`variant`, `analysis`/`verification` cases, `view`/`viewpoint`/`render`/`expose` | variability, trades, views |
 | 1.8 | Scoping per KerML: visibility, inherited redefinitions, conjugated ports (`~`), feature chaining | resolution without heuristics |
 

@@ -137,6 +137,8 @@ RELATION_TYPE_BY_STATEMENT = {
     "connect": "CONNECTS_TO",
     "satisfy": "SATISFIES",
     "allocate": "ALLOCATES",
+    "flow": "FLOWS_TO",
+    "dependency": "DEPENDS_ON",
 }
 
 _SIMPLE_NAME = re.compile(r"^[^\W\d]\w*$")
@@ -429,7 +431,8 @@ class Element(Node):
 
 @dataclass(eq=False)
 class Relationship(Node):
-    """`connect a to b;`, `satisfy R by x;`, `allocate a to b;`.
+    """`connect a to b;`, `satisfy R by x;`, `allocate a to b;`,
+    `flow [of Item] [from] a to b;`, `dependency [from] a to b;`.
 
     For every kind, `source` is the element the relation goes *from* in the
     graph and `target` the one it goes *to*: for `satisfy R by x`, the graph
@@ -440,6 +443,7 @@ class Relationship(Node):
     source: Ref
     target: Ref
     metadata: list[Ref] = field(default_factory=list)  # prefix annotations `#Safety`
+    item_type: Ref | None = None  # `flow`'s `of <Item>`
     owner: "Element | None" = None
     document: "Document | None" = None
 
@@ -448,6 +452,8 @@ class Relationship(Node):
         yield "target", self.target
         for r in self.metadata:
             yield "metadata", r
+        if self.item_type is not None:
+            yield "item_type", self.item_type
 
     @property
     def relation_type(self) -> str:

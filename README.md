@@ -116,10 +116,10 @@ package VehicleFuelSystem {
   - short names (`<'1.1'>`), `doc`, `comment [about …]`;
   - metadata: `metadata def`, `metadata x : M about …`, `@M`, `#M` prefixes.
 - **Values:** numbers with an optional unit, strings, booleans, references, and general expressions: arithmetic (`+ - * / %`), comparison (`== != < > <= >=`), boolean (`and`/`or`/`xor`/`not`), invocation (`f(a, b)`), `.`/`->` navigation and collection literals (`(1, 2, 3)`).
-- **Statements:** `connect`, `satisfy`, `allocate` (each optionally prefixed with `#` metadata annotations), and the bare result expression of a `constraint`/`calc` body (e.g. `constraint { massActual <= massReqd }`).
+- **Statements:** `connect`, `satisfy`, `allocate`, `flow` (`flow [of Item] [from] a to b;`), `dependency` (`dependency [from] a to b;` - each optionally prefixed with `#` metadata annotations), an inline `connect a to b` on an interface/connection usage (`interface i : I connect a.p to b.q;`), and the bare result expression of a `constraint`/`calc` body (e.g. `constraint { massActual <= massReqd }`).
 - **Packages and imports:** nested packages, `library package` / `standard library package`, several packages per file, multi-file workspaces, `import` with `*` / `**` wildcards, and `alias … for …`.
 
-Not supported yet: `..` ranges, `#()` indexing, named arguments, `->forAll { in x: T; ... }`-style block arguments, behaviour (succession, transitions, `perform`/`exhibit`), `subject`/`require`, `bind`, `flow`, interface/connection `end` bodies, import filters.
+Not supported yet: `..` ranges, `#()` indexing, named arguments, `->forAll { in x: T; ... }`-style block arguments, `bind`, `message`, `succession flow`, interface/connection `end` bodies, behaviour (succession, transitions, `perform`/`exhibit`), `subject`/`require`, import filters.
 
 When a file is rewritten:
 - plain `//` and `/* */` comments are dropped, while `doc` and `comment` are kept;

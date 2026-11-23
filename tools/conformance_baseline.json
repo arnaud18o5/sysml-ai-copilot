@@ -182,7 +182,11 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/examples/Camera Example/PictureTaking.sysml": [],
+  "sysml/src/examples/Camera Example/PictureTaking.sysml": [
+   "parse",
+   "roundtrip",
+   "resolve"
+  ],
   "sysml/src/examples/Cause and Effect Examples/CauseAndEffectExample.sysml": [],
   "sysml/src/examples/Cause and Effect Examples/MedicalDeviceFailure.sysml": [
    "parse",
@@ -240,7 +244,11 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/examples/Metadata Examples/IssueMetadataExample.sysml": [],
+  "sysml/src/examples/Metadata Examples/IssueMetadataExample.sysml": [
+   "parse",
+   "roundtrip",
+   "resolve"
+  ],
   "sysml/src/examples/Metadata Examples/RationaleMetadataExample.sysml": [
    "parse",
    "roundtrip"
@@ -296,7 +304,10 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/examples/Simple Tests/ControlNodeTest.sysml": [],
+  "sysml/src/examples/Simple Tests/ControlNodeTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/DecisionTest.sysml": [
    "parse",
    "roundtrip"
@@ -311,7 +322,11 @@
   "sysml/src/examples/Simple Tests/FeaturePathTest.sysml": [],
   "sysml/src/examples/Simple Tests/ImportTest.sysml": [],
   "sysml/src/examples/Simple Tests/IndividualTest.sysml": [],
-  "sysml/src/examples/Simple Tests/InterfaceTest.sysml": [],
+  "sysml/src/examples/Simple Tests/InterfaceTest.sysml": [
+   "parse",
+   "roundtrip",
+   "resolve"
+  ],
   "sysml/src/examples/Simple Tests/ItemTest.sysml": [
    "parse",
    "roundtrip",
@@ -355,7 +370,10 @@
    "roundtrip"
   ],
   "sysml/src/examples/Simple Tests/ViewTest.sysml": [],
-  "sysml/src/examples/State Space Representation Examples/CartSample.sysml": [],
+  "sysml/src/examples/State Space Representation Examples/CartSample.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/State Space Representation Examples/EVSample.sysml": [],
   "sysml/src/examples/Timeslice and Snapshot Examples/TimeVaryingAttribute.sysml": [
    "parse",
@@ -366,7 +384,10 @@
    "roundtrip"
   ],
   "sysml/src/examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml": [],
-  "sysml/src/examples/Vehicle Example/VehicleDefinitions.sysml": [],
+  "sysml/src/examples/Vehicle Example/VehicleDefinitions.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Vehicle Example/VehicleIndividuals.sysml": [],
   "sysml/src/examples/Vehicle Example/VehicleUsages.sysml": [],
   "sysml/src/examples/v1 Spec Examples/8.4.1 Wheel Hub Assembly/Wheel Package - Updated.sysml": [],
@@ -463,15 +484,43 @@
   ],
   "sysml/src/training/13. Flows/Flow Definition Example.sysml": [],
   "sysml/src/training/13. Flows/Flow Interface Example.sysml": [],
-  "sysml/src/training/13. Flows/Flow Usage Example.sysml": [],
-  "sysml/src/training/14. Action Definitions/Action Definition Example.sysml": [],
-  "sysml/src/training/14. Action Definitions/Action Shorthand Example.sysml": [],
-  "sysml/src/training/14. Action Definitions/Action Succession Example-1.sysml": [],
-  "sysml/src/training/14. Action Definitions/Action Succession Example-2.sysml": [],
-  "sysml/src/training/15. Actions/Action Decomposition.sysml": [],
-  "sysml/src/training/16. Conditional Succession/Conditional Succession Example-1.sysml": [],
-  "sysml/src/training/16. Conditional Succession/Conditional Succession Example-2.sysml": [],
-  "sysml/src/training/17. Control/Camera.sysml": [],
+  "sysml/src/training/13. Flows/Flow Usage Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/14. Action Definitions/Action Definition Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/14. Action Definitions/Action Shorthand Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/14. Action Definitions/Action Succession Example-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/14. Action Definitions/Action Succession Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/15. Actions/Action Decomposition.sysml": [
+   "parse",
+   "roundtrip",
+   "resolve"
+  ],
+  "sysml/src/training/16. Conditional Succession/Conditional Succession Example-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/16. Conditional Succession/Conditional Succession Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/17. Control/Camera.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/17. Control/Control Structures Example.sysml": [
    "parse",
    "roundtrip"
@@ -480,8 +529,14 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/training/17. Control/Fork Join Example.sysml": [],
-  "sysml/src/training/17. Control/Merge Example.sysml": [],
+  "sysml/src/training/17. Control/Fork Join Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/17. Control/Merge Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/18. Action Performance/Action Performance Example.sysml": [
    "parse",
    "roundtrip"
@@ -690,10 +745,16 @@
   "sysml/src/validation/03-Function-based Behavior/3a-Function-based Behavior-2.sysml": [],
   "sysml/src/validation/03-Function-based Behavior/3a-Function-based Behavior-3.sysml": [],
   "sysml/src/validation/03-Function-based Behavior/3c-Function-based Behavior-structure mod-1.sysml": [],
-  "sysml/src/validation/03-Function-based Behavior/3c-Function-based Behavior-structure mod-2.sysml": [],
+  "sysml/src/validation/03-Function-based Behavior/3c-Function-based Behavior-structure mod-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/validation/03-Function-based Behavior/3c-Function-based Behavior-structure mod-3.sysml": [],
   "sysml/src/validation/03-Function-based Behavior/3d-Function-based Behavior-item.sysml": [],
-  "sysml/src/validation/03-Function-based Behavior/3e-Function-based Behavior-item.sysml": [],
+  "sysml/src/validation/03-Function-based Behavior/3e-Function-based Behavior-item.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/validation/04-Functional Allocation/4a-Functional Allocation.sysml": [],
   "sysml/src/validation/05-State-based Behavior/5-State-based Behavior-1.sysml": [],
   "sysml/src/validation/05-State-based Behavior/5-State-based Behavior-1a.sysml": [],

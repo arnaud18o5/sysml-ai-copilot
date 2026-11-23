@@ -171,6 +171,60 @@ package P {
         parse_document("package P { part a; part b; abstract connect a to b; }")
 
 
+def test_flow_and_dependency_statements_roundtrip():
+    doc, out = roundtrip("""
+package P {
+    part def A { port p; }
+    part def B { port q; }
+    part a : A;
+    part b : B;
+
+    flow a.p to b.q;
+    flow of Real from a.p to b.q;
+    #Critical dependency from a to b;
+
+    metadata def Critical;
+}
+""")
+    pkg = doc.members[0]
+    rels = [m for m in pkg.members if isinstance(m, Relationship)]
+    bare_flow, typed_flow, dep = rels
+    assert bare_flow.kind == "flow" and bare_flow.item_type is None
+    assert str(bare_flow.source) == "a.p" and str(bare_flow.target) == "b.q"
+    assert typed_flow.kind == "flow" and str(typed_flow.item_type) == "Real"
+    assert dep.kind == "dependency" and [str(r) for r in dep.metadata] == ["Critical"]
+    assert "flow from a.p to b.q;" in out  # "from" is always rendered, even when parsed without it
+    assert "flow of Real from a.p to b.q;" in out
+    assert "#Critical dependency from a to b;" in out
+
+
+def test_interface_inline_connect_roundtrips():
+    doc, out = roundtrip("""
+package P {
+    part def A { port p; }
+    part def B { port q; }
+    part a : A;
+    part b : B;
+
+    interface def I;
+    interface i1 : I connect a.p to b.q;
+    interface i2 connect a.p to b.q {
+        doc /* also carries further members. */
+    }
+}
+""")
+    pkg = doc.members[0]
+    i1 = next(m for m in pkg.members if isinstance(m, Element) and m.effective_name == "i1")
+    assert len(i1.members) == 1
+    connector = i1.members[0]
+    assert isinstance(connector, Relationship) and connector.kind == "connect"
+    assert str(connector.source) == "a.p" and str(connector.target) == "b.q"
+    assert "interface i1 : I {\n        connect a.p to b.q;\n    }" in out
+
+    with pytest.raises(SysmlSyntaxError):
+        parse_document("package P { part a; part b; part p1 connect a to b; }")
+
+
 def test_case_kind_roundtrips_and_specializes_calc():
     doc, out = roundtrip("""
 package P {
