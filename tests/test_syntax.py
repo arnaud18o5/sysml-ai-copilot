@@ -150,6 +150,41 @@ def test_wildcard_only_last_in_import():
         parse_document("package P { import A::*::B; }")
 
 
+def test_relationship_metadata_annotation_roundtrips():
+    doc, out = roundtrip("""
+package P {
+    metadata def Causation;
+    part def A { port p; }
+    part def B { port q; }
+    part a : A;
+    part b : B;
+
+    #Causation connect a.p to b.q;
+}
+""")
+    pkg = doc.members[0]
+    rel = next(m for m in pkg.members if isinstance(m, Relationship))
+    assert [str(r) for r in rel.metadata] == ["Causation"]
+    assert "#Causation connect a.p to b.q;" in out
+
+    with pytest.raises(SysmlSyntaxError):
+        parse_document("package P { part a; part b; abstract connect a to b; }")
+
+
+def test_case_kind_roundtrips_and_specializes_calc():
+    doc, out = roundtrip("""
+package P {
+    abstract case def Case;
+    case def Demo :> Case;
+    part holder { case x : Demo; }
+}
+""")
+    els = {m.effective_name: m for m in doc.members[0].members if isinstance(m, Element)}
+    assert els["Case"].kind == "CaseDefinition"
+    assert els["Demo"].kind == "CaseDefinition" and [str(r) for r in els["Demo"].specializes] == ["Case"]
+    assert "case def Demo :> Case;" in out
+
+
 def test_parse_ref_and_value():
     assert parse_ref("A::B.'c d'").segments == ["A", "B", "c d"]
     v = parse_value("3.5 [bar]")

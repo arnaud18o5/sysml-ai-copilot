@@ -107,7 +107,7 @@ package VehicleFuelSystem {
 }
 ```
 
-- **Definitions and usages** for `part`, `port`, `attribute`, `item`, `action`, `state`, `requirement`, `constraint`, `interface`, `connection`, `allocation`, `enum`, `occurrence`, `calc`, `use case`, `verification`, `analysis`, `view`, `viewpoint`, `concern` and `metadata`, plus keyword-less usages (`:>> mass = 900;`, `ref x : T;`).
+- **Definitions and usages** for `part`, `port`, `attribute`, `item`, `action`, `state`, `requirement`, `constraint`, `interface`, `connection`, `allocation`, `enum`, `occurrence`, `calc`, `case`, `use case`, `verification`, `analysis`, `view`, `viewpoint`, `concern` and `metadata`, plus keyword-less usages (`:>> mass = 900;`, `ref x : T;`).
 - **Modifiers and features:**
   - visibility (`private`/`protected`/`public`) and directions (`in`/`out`/`inout`);
   - `abstract`, `variation`, `variant`, `individual`, `readonly`, `derived`, `end`, `constant`, `ref`;
@@ -116,7 +116,7 @@ package VehicleFuelSystem {
   - short names (`<'1.1'>`), `doc`, `comment [about …]`;
   - metadata: `metadata def`, `metadata x : M about …`, `@M`, `#M` prefixes.
 - **Values:** numbers with an optional unit, strings, booleans and references.
-- **Statements:** `connect`, `satisfy` and `allocate`.
+- **Statements:** `connect`, `satisfy` and `allocate`, each optionally prefixed with `#` metadata annotations.
 - **Packages and imports:** nested packages, `library package` / `standard library package`, several packages per file, multi-file workspaces, `import` with `*` / `**` wildcards, and `alias … for …`.
 
 Not supported yet: expressions and constraint bodies, behaviour (succession, transitions, `perform`/`exhibit`), `subject`/`require`, `bind`, `flow`, interface/connection `end` bodies, import filters.

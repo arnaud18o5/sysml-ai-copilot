@@ -38,6 +38,7 @@ ELEMENT_KEYWORDS = [
     "enum",
     "occurrence",
     "calc",
+    "case",
     "use case",
     "verification",
     "analysis",
@@ -66,6 +67,7 @@ _KIND_STEMS = {
     "enum": "Enumeration",
     "occurrence": "Occurrence",
     "calc": "Calculation",
+    "case": "Case",
     "use case": "UseCase",
     "verification": "VerificationCase",
     "analysis": "AnalysisCase",
@@ -101,7 +103,8 @@ COMPATIBLE_TYPING = {
     "connection": {"connection", "interface"},
     "allocation": {"allocation"},
     "occurrence": {"occurrence", "part", "item"},
-    "calc": {"calc"},
+    "calc": {"calc", "case"},  # Case :> Calculation in the standard library
+    "case": {"case"},
     "use case": {"use case"},
     "verification": {"verification"},
     "analysis": {"analysis"},
@@ -347,12 +350,15 @@ class Relationship(Node):
     kind: str
     source: Ref
     target: Ref
+    metadata: list[Ref] = field(default_factory=list)  # prefix annotations `#Safety`
     owner: "Element | None" = None
     document: "Document | None" = None
 
     def refs(self):
         yield "source", self.source
         yield "target", self.target
+        for r in self.metadata:
+            yield "metadata", r
 
     @property
     def relation_type(self) -> str:
