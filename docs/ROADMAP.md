@@ -17,7 +17,7 @@ Every phase has measurable exit criteria. Three numbers are tracked from the sta
 
 | Metric | Tool | Now (2026-11) |
 |---|---|---|
-| OMG SysML v2 release files that parse / round-trip / resolve | `tools/conformance.py report` | 66 / 66 / 23 of 310 (21.3% / 21.3% / 7.4%), was 17 / 17 / 5 before step 1.1 |
+| OMG SysML v2 release files that parse / round-trip / resolve | `tools/conformance.py report` | 144 / 144 / 26 of 310 (46.5% / 46.5% / 8.4%), was 66 / 66 / 23 before step 1.3 |
 | Agent task success, small model | `evals/run.py --model claude-haiku-5-5` | not measured yet (needs an API key) |
 | Agent task suite size | `evals/tasks.json` | 14 tasks, all solvable by their reference solution |
 
@@ -41,7 +41,7 @@ Goal: the official examples load. Order the work by what blocks the most files: 
 |---|---|---|
 | 1.1 ✅ | `standard library package`, `library package`, `alias`, `ref`, `#`/`metadata` annotations, `comment`, `about` (done: plus visibility, feature modifiers, short names, `~`, `::>`, `ordered`/`nonunique`, `default`/`:=`) | the standard library itself (58 files start with `standard`), and most files' first error |
 | 1.2 | Standard library loading: ISQ, SI, ScalarValues and the other model libraries, loaded from the release instead of the built-in stub | units and quantities (`[kg]` resolving to real units) |
-| 1.3 | Expressions: arithmetic, comparison, boolean, invocation, `.` and `->` navigation, collection literals | attribute values, `constraint` bodies, `calc` |
+| 1.3 ✅ | Expressions: arithmetic, comparison, boolean, invocation, `.` and `->` navigation, collection literals (not done: `..` ranges, `#()` indexing, named/keyword arguments, `->forAll { in x: T; ... }`-style block arguments) | attribute values, `constraint` bodies, `calc` |
 | 1.4 | Requirements: `subject`, `require constraint`, `assume`, `actor`, `stakeholder`, `frame concern`, `verify` | requirement semantics and verification |
 | 1.5 | Behaviour: `action` bodies, `first`/`then`/succession, `fork`/`join`/`merge`/`decide`, `perform`, `accept`/`send`, `state` bodies, `entry`/`do`/`exit`, `transition`, `exhibit` | activity and state machine views, simulation |
 | 1.6 | Interfaces and flows: `bind`, `flow`, `interface` with `end`, `connection` with `end`, `message`, `succession flow` | complete internal block views |

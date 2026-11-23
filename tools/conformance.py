@@ -103,14 +103,18 @@ def measure(corpus):
                 entry["error"] = "roundtrip: the serialized text does not parse back to the same model"
         except Exception as exc:
             entry["error"] = f"roundtrip: {exc}"
-    # Resolution: load every parsed library file plus the file itself.
+    # Resolution: load every parsed library file plus the file itself. Only
+    # the target file's own references are checked (resolving them may
+    # still walk into the library) - a full diagnostics() pass would also
+    # re-validate every library file's own references on every iteration,
+    # which is pure waste since that part of the result never changes.
     library = [doc for rel, doc in parsed.items() if rel.startswith("sysml.library")]
     for rel, doc in parsed.items():
         ws = Workspace()
         ws.documents.extend([doc] + [d for d in library if d is not doc])
         ws.reindex()
-        errors = [d for d in ws.diagnostics() if d.document == rel
-                  and d.code in ("unresolved_reference", "ambiguous_reference")]
+        errors = [(node, role, ref) for node in doc.walk() for role, ref in node.refs()
+                  if not ws.resolve_node_ref(node, ref).ok]
         results[rel]["resolve"] = not errors
         if errors:
             results[rel]["unresolved"] = len(errors)
