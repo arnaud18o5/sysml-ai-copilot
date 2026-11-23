@@ -576,7 +576,7 @@ class ModelService:
             sup = res.target
             visited.add(id(sup))
             for m in sup.element_members():
-                if m.effective_name in seen:
+                if m.effective_name is None or m.effective_name in seen:
                     continue
                 seen.add(m.effective_name)
                 out.append({"name": m.effective_name, "kind": m.kind, "declared_in": self.ws.id_of(sup),

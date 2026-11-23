@@ -87,6 +87,15 @@ def test_inherited_feature_cannot_be_edited_through_chain(svc):
     assert r["error"]["suggestions"] == [f"{PKG}.FuelTank.fuelOut"]
 
 
+def test_inherited_features_skip_unnamed_members(svc):
+    # Vehicle owns an unnamed member (a bare `constraint { ... }` usage)
+    # and Diagnose.vehicle is typed by it - walking that inheritance chain
+    # must not choke on a member with no name to inherit.
+    el = svc.get_element(f"{PKG}.Diagnose.vehicle")
+    assert any(f["name"] == "capacityMargin" for f in el["inherited_features"])
+    svc.export_model()
+
+
 def test_relationships(svc):
     r = ok(call(svc, "add_relationship", {"kind": "connect", "source": f"{PKG}.Vehicle.tank.fuelOut",
                                           "target": f"{PKG}.Vehicle.engine.fuelIn"}))
@@ -178,7 +187,7 @@ def test_queries(svc):
     assert f"{PKG}.FuelPump" in [i["id"] for i in deps["impacted"]]
     assert call(svc, "impact_analysis", {"element": PKG, "max_hops": "3; DROP"})["error"]["code"] == "invalid_argument"
     el = svc.get_element(f"{PKG}.Vehicle.tank")
-    assert {f["name"] for f in el["inherited_features"]} == {"fuelOut", "capacity", "fuelType"}
+    assert {f["name"] for f in el["inherited_features"]} == {"fuelOut", "capacity", "fuelType", "calibrationPoints"}
     tree = svc.get_tree(depth=1)
     assert tree["documents"][0]["roots"][0]["id"] == PKG
     exported = svc.export_model()
