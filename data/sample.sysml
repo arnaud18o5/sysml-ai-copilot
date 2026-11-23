@@ -32,6 +32,12 @@ package VehicleFuelSystem {
 
         connect tank.fuelOut to pump.fuelIn;
         #Critical connect pump.fuelOut to engine.fuelIn;
+
+        attribute capacityMargin : Real = tank.capacity - 10;
+
+        constraint {
+            tank.capacity > 0 and capacityMargin > -10
+        }
     }
 
     part businessCase {

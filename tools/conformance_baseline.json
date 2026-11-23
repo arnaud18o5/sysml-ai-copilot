@@ -7,7 +7,10 @@
    "resolve"
   ],
   "sysml.library/Domain Libraries/Analysis/SampledFunctions.sysml": [],
-  "sysml.library/Domain Libraries/Analysis/StateSpaceRepresentation.sysml": [],
+  "sysml.library/Domain Libraries/Analysis/StateSpaceRepresentation.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Analysis/TradeStudies.sysml": [],
   "sysml.library/Domain Libraries/Cause and Effect/CausationConnections.sysml": [],
   "sysml.library/Domain Libraries/Cause and Effect/CauseAndEffect.sysml": [],
@@ -28,45 +31,87 @@
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQAcoustics.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQAtomicNuclear.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQBase.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQAcoustics.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQAtomicNuclear.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQBase.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/ISQCharacteristicNumbers.sysml": [
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQChemistryMolecular.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQCondensedMatter.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQElectromagnetism.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQChemistryMolecular.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQCondensedMatter.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQElectromagnetism.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/ISQInformation.sysml": [
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQLight.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQMechanics.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQLight.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQMechanics.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/ISQSpaceTime.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/ISQThermodynamics.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/ISQThermodynamics.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/MeasurementRefCalculations.sysml": [
    "parse",
    "roundtrip"
   ],
   "sysml.library/Domain Libraries/Quantities and Units/MeasurementReferences.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/Quantities.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/QuantityCalculations.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/Quantities.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml.library/Domain Libraries/Quantities and Units/QuantityCalculations.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/SI.sysml": [],
   "sysml.library/Domain Libraries/Quantities and Units/SIPrefixes.sysml": [],
   "sysml.library/Domain Libraries/Quantities and Units/TensorCalculations.sysml": [],
-  "sysml.library/Domain Libraries/Quantities and Units/Time.sysml": [],
+  "sysml.library/Domain Libraries/Quantities and Units/Time.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Quantities and Units/USCustomaryUnits.sysml": [],
   "sysml.library/Domain Libraries/Quantities and Units/VectorCalculations.sysml": [],
-  "sysml.library/Domain Libraries/Requirement Derivation/DerivationConnections.sysml": [],
+  "sysml.library/Domain Libraries/Requirement Derivation/DerivationConnections.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Domain Libraries/Requirement Derivation/RequirementDerivation.sysml": [],
   "sysml.library/Systems Library/Actions.sysml": [],
   "sysml.library/Systems Library/Allocations.sysml": [
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Systems Library/AnalysisCases.sysml": [],
+  "sysml.library/Systems Library/AnalysisCases.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Systems Library/Attributes.sysml": [
    "parse",
    "roundtrip"
@@ -107,7 +152,10 @@
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Systems Library/UseCases.sysml": [],
+  "sysml.library/Systems Library/UseCases.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Systems Library/VerificationCases.sysml": [],
   "sysml.library/Systems Library/Views.sysml": [],
   "sysml/src/examples/Analysis Examples/AnalysisAnnotation.sysml": [
@@ -127,7 +175,10 @@
   "sysml/src/examples/Association Examples/ProductSelection_N_ary.sysml": [],
   "sysml/src/examples/Association Examples/ProductSelection_OwnedEnds.sysml": [],
   "sysml/src/examples/Association Examples/ProductSelection_UnownedEnds.sysml": [],
-  "sysml/src/examples/Camera Example/Camera.sysml": [],
+  "sysml/src/examples/Camera Example/Camera.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Camera Example/PictureTaking.sysml": [],
   "sysml/src/examples/Cause and Effect Examples/CauseAndEffectExample.sysml": [],
   "sysml/src/examples/Cause and Effect Examples/MedicalDeviceFailure.sysml": [],
@@ -161,38 +212,60 @@
    "roundtrip"
   ],
   "sysml/src/examples/Individuals Examples/AnalysisIndividualExample.sysml": [],
-  "sysml/src/examples/Individuals Examples/JohnIndividualExample.sysml": [],
+  "sysml/src/examples/Individuals Examples/JohnIndividualExample.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceModel.sysml": [],
-  "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceModelOutside.sysml": [],
+  "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceModelOutside.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceOutsideRealization-2.sysml": [],
   "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceOutsideRealization-3.sysml": [],
   "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceRealization-2.sysml": [],
   "sysml/src/examples/Interaction Sequencing Examples/ServerSequenceRealization-3.sysml": [],
-  "sysml/src/examples/Mass Roll-up Example/MassConstraintExample.sysml": [],
+  "sysml/src/examples/Mass Roll-up Example/MassConstraintExample.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Mass Roll-up Example/MassRollup.sysml": [],
   "sysml/src/examples/Mass Roll-up Example/Vehicles.sysml": [
    "parse",
    "roundtrip"
   ],
   "sysml/src/examples/Metadata Examples/IssueMetadataExample.sysml": [],
-  "sysml/src/examples/Metadata Examples/RationaleMetadataExample.sysml": [],
+  "sysml/src/examples/Metadata Examples/RationaleMetadataExample.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Metadata Examples/RequirementMetadataExample.sysml": [],
   "sysml/src/examples/Metadata Examples/RiskMetadataExample.sysml": [
    "parse",
    "roundtrip"
   ],
-  "sysml/src/examples/Metadata Examples/VerificationMetadataExample.sysml": [],
+  "sysml/src/examples/Metadata Examples/VerificationMetadataExample.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Packet Example/PacketUsage.sysml": [
    "parse",
    "roundtrip"
   ],
   "sysml/src/examples/Packet Example/Packets.sysml": [
    "parse",
+   "roundtrip",
+   "resolve"
+  ],
+  "sysml/src/examples/Requirements Examples/HSUVRequirements.sysml": [
+   "parse",
    "roundtrip"
   ],
-  "sysml/src/examples/Requirements Examples/HSUVRequirements.sysml": [],
   "sysml/src/examples/Requirements Examples/RequirementDerivationExample.sysml": [],
-  "sysml/src/examples/Requirements Examples/VehicleRequirementDerivation.sysml": [],
+  "sysml/src/examples/Requirements Examples/VehicleRequirementDerivation.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Room Model/RoomModel.sysml": [],
   "sysml/src/examples/Simple Tests/ActionTest.sysml": [],
   "sysml/src/examples/Simple Tests/AliasTest.sysml": [
@@ -200,7 +273,10 @@
    "roundtrip"
   ],
   "sysml/src/examples/Simple Tests/AllocationTest.sysml": [],
-  "sysml/src/examples/Simple Tests/AnalysisTest.sysml": [],
+  "sysml/src/examples/Simple Tests/AnalysisTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/AssignmentTest.sysml": [],
   "sysml/src/examples/Simple Tests/CalculationTest.sysml": [],
   "sysml/src/examples/Simple Tests/CommentTest.sysml": [],
@@ -210,9 +286,15 @@
    "resolve"
   ],
   "sysml/src/examples/Simple Tests/ConnectionTest.sysml": [],
-  "sysml/src/examples/Simple Tests/ConstraintTest.sysml": [],
+  "sysml/src/examples/Simple Tests/ConstraintTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/ControlNodeTest.sysml": [],
-  "sysml/src/examples/Simple Tests/DecisionTest.sysml": [],
+  "sysml/src/examples/Simple Tests/DecisionTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/DefaultValueTest.sysml": [],
   "sysml/src/examples/Simple Tests/DependencyTest.sysml": [],
   "sysml/src/examples/Simple Tests/EnumerationTest.sysml": [
@@ -245,20 +327,38 @@
   ],
   "sysml/src/examples/Simple Tests/StateTest.sysml": [],
   "sysml/src/examples/Simple Tests/StructuredControlTest.sysml": [],
-  "sysml/src/examples/Simple Tests/TextualRepresentationTest.sysml": [],
-  "sysml/src/examples/Simple Tests/TradeStudyTest.sysml": [],
-  "sysml/src/examples/Simple Tests/UseCaseTest.sysml": [],
+  "sysml/src/examples/Simple Tests/TextualRepresentationTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/examples/Simple Tests/TradeStudyTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/examples/Simple Tests/UseCaseTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/VariabilityTest.sysml": [
    "parse",
    "roundtrip",
    "resolve"
   ],
-  "sysml/src/examples/Simple Tests/VerificationTest.sysml": [],
+  "sysml/src/examples/Simple Tests/VerificationTest.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Simple Tests/ViewTest.sysml": [],
   "sysml/src/examples/State Space Representation Examples/CartSample.sysml": [],
   "sysml/src/examples/State Space Representation Examples/EVSample.sysml": [],
-  "sysml/src/examples/Timeslice and Snapshot Examples/TimeVaryingAttribute.sysml": [],
-  "sysml/src/examples/Variability Examples/VehicleVariabilityModel.sysml": [],
+  "sysml/src/examples/Timeslice and Snapshot Examples/TimeVaryingAttribute.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/examples/Variability Examples/VehicleVariabilityModel.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Vehicle Example/SysML v2 Spec Annex A SimpleVehicleModel.sysml": [],
   "sysml/src/examples/Vehicle Example/VehicleDefinitions.sysml": [],
   "sysml/src/examples/Vehicle Example/VehicleIndividuals.sysml": [],
@@ -278,12 +378,17 @@
   "sysml/src/examples/v1 Spec Examples/D.4.7.8 Dynamics/HSUVDynamics.sysml": [],
   "sysml/src/training/01. Packages/Comment Example.sysml": [
    "parse",
-   "roundtrip"
+   "roundtrip",
+   "resolve"
   ],
-  "sysml/src/training/01. Packages/Documentation Example.sysml": [],
-  "sysml/src/training/01. Packages/Package Example.sysml": [
+  "sysml/src/training/01. Packages/Documentation Example.sysml": [
    "parse",
    "roundtrip"
+  ],
+  "sysml/src/training/01. Packages/Package Example.sysml": [
+   "parse",
+   "roundtrip",
+   "resolve"
   ],
   "sysml/src/training/02. Part Definitions/Part Definition Example.sysml": [
    "parse",
@@ -342,7 +447,10 @@
   ],
   "sysml/src/training/11. Interfaces/Interface Decomposition Example.sysml": [],
   "sysml/src/training/11. Interfaces/Interface Example.sysml": [],
-  "sysml/src/training/12. Binding Connectors/Binding Connectors Example-1.sysml": [],
+  "sysml/src/training/12. Binding Connectors/Binding Connectors Example-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/12. Binding Connectors/Binding Connectors Example-2.sysml": [
    "parse",
    "roundtrip"
@@ -358,36 +466,90 @@
   "sysml/src/training/16. Conditional Succession/Conditional Succession Example-1.sysml": [],
   "sysml/src/training/16. Conditional Succession/Conditional Succession Example-2.sysml": [],
   "sysml/src/training/17. Control/Camera.sysml": [],
-  "sysml/src/training/17. Control/Control Structures Example.sysml": [],
-  "sysml/src/training/17. Control/Decision Example.sysml": [],
+  "sysml/src/training/17. Control/Control Structures Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/17. Control/Decision Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/17. Control/Fork Join Example.sysml": [],
   "sysml/src/training/17. Control/Merge Example.sysml": [],
-  "sysml/src/training/18. Action Performance/Action Performance Example.sysml": [],
+  "sysml/src/training/18. Action Performance/Action Performance Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/19. Terminate Actions/Terminate Actions Example-1.sysml": [],
-  "sysml/src/training/19. Terminate Actions/Terminate Actions Example-2.sysml": [],
+  "sysml/src/training/19. Terminate Actions/Terminate Actions Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/20. Assignment Actions/Assignment Example.sysml": [],
   "sysml/src/training/21. Asynchronous Messaging/Messaging Example.sysml": [],
   "sysml/src/training/21. Asynchronous Messaging/Messaging with Ports.sysml": [],
-  "sysml/src/training/22. Opaque Actions/Opaque Action Example.sysml": [],
-  "sysml/src/training/23. State Definitions/State Definition Example-1.sysml": [],
-  "sysml/src/training/23. State Definitions/State Definition Example-2.sysml": [],
-  "sysml/src/training/24. States/State Actions.sysml": [],
-  "sysml/src/training/24. States/State Decomposition-1.sysml": [],
+  "sysml/src/training/22. Opaque Actions/Opaque Action Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/23. State Definitions/State Definition Example-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/23. State Definitions/State Definition Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/24. States/State Actions.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/24. States/State Decomposition-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/24. States/State Decomposition-2.sysml": [],
-  "sysml/src/training/25. Transitions/Change and Time Triggers.sysml": [],
+  "sysml/src/training/25. Transitions/Change and Time Triggers.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/25. Transitions/Local Clock Example.sysml": [],
-  "sysml/src/training/25. Transitions/Transition Actions.sysml": [],
-  "sysml/src/training/26. State Exhibition/State Exhibition Example.sysml": [],
-  "sysml/src/training/27. Occurrences/Event Occurrence Example.sysml": [],
+  "sysml/src/training/25. Transitions/Transition Actions.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/26. State Exhibition/State Exhibition Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/27. Occurrences/Event Occurrence Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/27. Occurrences/Interaction Example-1.sysml": [],
-  "sysml/src/training/27. Occurrences/Interaction Example-2.sysml": [],
+  "sysml/src/training/27. Occurrences/Interaction Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/27. Occurrences/Interaction Realization-1.sysml": [],
   "sysml/src/training/27. Occurrences/Interaction Realization-2.sysml": [],
   "sysml/src/training/27. Occurrences/Message Payload Example.sysml": [],
-  "sysml/src/training/27. Occurrences/Time Slice and Snapshot Example.sysml": [],
-  "sysml/src/training/28. Individuals/Individuals and Roles-1.sysml": [],
-  "sysml/src/training/28. Individuals/Individuals and Snapshots Example.sysml": [],
-  "sysml/src/training/28. Individuals/Individuals and Time Slices.sysml": [],
+  "sysml/src/training/27. Occurrences/Time Slice and Snapshot Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/28. Individuals/Individuals and Roles-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/28. Individuals/Individuals and Snapshots Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/28. Individuals/Individuals and Time Slices.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/29. Expressions/Car Mass Rollup Example 1.sysml": [
    "parse",
    "roundtrip"
@@ -396,29 +558,83 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/training/29. Expressions/MassRollup1.sysml": [],
+  "sysml/src/training/29. Expressions/MassRollup1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/29. Expressions/MassRollup2.sysml": [],
-  "sysml/src/training/30. Calculations/Calculation Definitions.sysml": [],
-  "sysml/src/training/30. Calculations/Calculation Usages-1.sysml": [],
-  "sysml/src/training/30. Calculations/Calculation Usages-2.sysml": [],
-  "sysml/src/training/31. Constraints/Analytical Constraints.sysml": [],
-  "sysml/src/training/31. Constraints/Constraint Assertions-1.sysml": [],
-  "sysml/src/training/31. Constraints/Constraint Assertions-2.sysml": [],
-  "sysml/src/training/31. Constraints/Constraints Example-1.sysml": [],
-  "sysml/src/training/31. Constraints/Constraints Example-2.sysml": [],
-  "sysml/src/training/31. Constraints/Derivation Constraints.sysml": [],
-  "sysml/src/training/31. Constraints/Time Constraints.sysml": [],
-  "sysml/src/training/32. Requirements/Requirement Definitions.sysml": [],
-  "sysml/src/training/32. Requirements/Requirement Groups.sysml": [],
-  "sysml/src/training/32. Requirements/Requirement Satisfaction.sysml": [],
-  "sysml/src/training/32. Requirements/Requirement Usages.sysml": [],
+  "sysml/src/training/30. Calculations/Calculation Definitions.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/30. Calculations/Calculation Usages-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/30. Calculations/Calculation Usages-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Analytical Constraints.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Constraint Assertions-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Constraint Assertions-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Constraints Example-1.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Constraints Example-2.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Derivation Constraints.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/31. Constraints/Time Constraints.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/32. Requirements/Requirement Definitions.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/32. Requirements/Requirement Groups.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/32. Requirements/Requirement Satisfaction.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/32. Requirements/Requirement Usages.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/33. Analysis/Analysis Case Definition Example.sysml": [],
   "sysml/src/training/33. Analysis/Analysis Case Usage Example.sysml": [],
-  "sysml/src/training/33. Analysis/Trade Study Analysis Example.sysml": [],
+  "sysml/src/training/33. Analysis/Trade Study Analysis Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/34. Verification/Verification Case Definition Example.sysml": [],
   "sysml/src/training/34. Verification/Verification Case Usage Example.sysml": [],
-  "sysml/src/training/35. Use Cases/Use Case Definition Example.sysml": [],
-  "sysml/src/training/35. Use Cases/Use Case Usage Example.sysml": [],
+  "sysml/src/training/35. Use Cases/Use Case Definition Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/training/35. Use Cases/Use Case Usage Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/36. Variability/Variation Configuration.sysml": [
    "parse",
    "roundtrip"
@@ -427,7 +643,10 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/training/36. Variability/Variation Usages.sysml": [],
+  "sysml/src/training/36. Variability/Variation Usages.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/37. Dependencies/Dependency Example.sysml": [],
   "sysml/src/training/38. Allocation/Allocation Definition Example.sysml": [],
   "sysml/src/training/38. Allocation/Allocation Usage Example.sysml": [],
@@ -444,11 +663,17 @@
   "sysml/src/training/41. Language Extension/Model Library Example.sysml": [],
   "sysml/src/training/41. Language Extension/Semantic Metadata Example.sysml": [],
   "sysml/src/training/41. Language Extension/User Keyword Example.sysml": [],
-  "sysml/src/training/42. Views/Viewpoint Example.sysml": [],
+  "sysml/src/training/42. Views/Viewpoint Example.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/training/42. Views/Views Example.sysml": [],
   "sysml/src/validation/01-Parts Tree/1a-Parts Tree.sysml": [],
   "sysml/src/validation/01-Parts Tree/1c-Parts Tree Redefinition.sysml": [],
-  "sysml/src/validation/01-Parts Tree/1d-Parts Tree with Reference.sysml": [],
+  "sysml/src/validation/01-Parts Tree/1d-Parts Tree with Reference.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/validation/02-Parts Interconnection/2a-Parts Interconnection.sysml": [],
   "sysml/src/validation/02-Parts Interconnection/2c-Parts Interconnection-Multiple Decompositions.sysml": [
    "parse",
@@ -473,7 +698,10 @@
   "sysml/src/validation/07-Variant Configuration/7b-Variant Configurations.sysml": [],
   "sysml/src/validation/08-Requirements/8-Requirements.sysml": [],
   "sysml/src/validation/09-Verification/9-Verification-simplified.sysml": [],
-  "sysml/src/validation/10-Analysis and Trades/10a-Analysis.sysml": [],
+  "sysml/src/validation/10-Analysis and Trades/10a-Analysis.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/validation/10-Analysis and Trades/10b-Trade-off Among Alternative Configurations.sysml": [],
   "sysml/src/validation/10-Analysis and Trades/10c-Fuel Economy Analysis.sysml": [],
   "sysml/src/validation/10-Analysis and Trades/10d-Dynamics Analysis.sysml": [],
@@ -516,7 +744,10 @@
    "parse",
    "roundtrip"
   ],
-  "sysml/src/validation/15-Properties-Values-Expressions/15_08-Range Restriction.sysml": [],
+  "sysml/src/validation/15-Properties-Values-Expressions/15_08-Range Restriction.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/validation/15-Properties-Values-Expressions/15_10-Primitive Data Types.sysml": [],
   "sysml/src/validation/15-Properties-Values-Expressions/15_11-Variable Length Collection Types.sysml": [
    "parse",
@@ -530,7 +761,13 @@
   "sysml/src/validation/15-Properties-Values-Expressions/15_19-Materials with Properties.sysml": [],
   "sysml/src/validation/15-Properties-Values-Expressions/15_19a-Materials with Properties.sysml": [],
   "sysml/src/validation/17-Sequence Modeling/17a-Sequence-Modeling.sysml": [],
-  "sysml/src/validation/17-Sequence Modeling/17b-Sequence-Modeling.sysml": [],
-  "sysml/src/validation/18-Use Case/18-Use Case.sysml": []
+  "sysml/src/validation/17-Sequence Modeling/17b-Sequence-Modeling.sysml": [
+   "parse",
+   "roundtrip"
+  ],
+  "sysml/src/validation/18-Use Case/18-Use Case.sysml": [
+   "parse",
+   "roundtrip"
+  ]
  }
 }

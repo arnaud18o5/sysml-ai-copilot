@@ -120,7 +120,7 @@ RESERVED_WORDS = {
     "false", "specializes", "subsets", "redefines", "references", "case", "use",
     "standard", "library", "alias", "for", "comment", "about", "ref", "readonly",
     "derived", "end", "constant", "variation", "variant", "individual", "ordered", "nonunique",
-    "defined", "default",
+    "defined", "default", "and", "or", "xor", "not",
 } | {kw for kw in ELEMENT_KEYWORDS if " " not in kw}
 
 VISIBILITIES = ("private", "protected", "public")
@@ -192,16 +192,96 @@ def separators_for(path) -> list[str]:
     return ["." if getattr(el, "is_usage", False) else "::" for el in path[:-1]]
 
 
+# Expression operator -> rendering precedence (higher binds tighter). Mirrors
+# the grammar's rule nesting in `syntax.py` exactly: an operator may render
+# its operand bare only if the operand's precedence is not lower than what
+# that position requires, or the text would parse back into a different tree.
+_EXPR_PREC = {
+    "num": 100, "string": 100, "boolean": 100, "ref": 100, "seq": 100, "call": 100,
+    "arrow": 85, "neg": 80, "mul": 70, "div": 70, "mod": 70, "add": 60, "sub": 60,
+    "cmp": 50, "not": 40, "and": 30, "xor": 30, "or": 20,
+}
+_EXPR_BINOPS = {"add": "+", "sub": "-", "mul": "*", "div": "/", "mod": "%",
+               "and": "and", "or": "or", "xor": "xor"}
+
+
+@dataclass(eq=False)
+class Expr:
+    """A general expression (arithmetic, comparison, boolean, invocation,
+    `->` navigation, collection literal), used wherever SysML v2 allows more
+    than a bare literal or reference: attribute/parameter values and the
+    result expression of a `constraint`/`calc` body.
+
+    Leaves (`num`, `string`, `boolean`, `ref`) mirror `Value`'s own literal
+    kinds; everything else holds its operands in `args`.
+    """
+
+    op: str
+    args: list["Expr"] = field(default_factory=list)
+    text: str | None = None  # literal text, or the comparison operator ("==", ...)
+    ref: Ref | None = None  # leaf reference, or the callee of a call/arrow
+    name: str | None = None  # member name of a `->` navigation
+    unit: Ref | None = None  # unit on a `num` leaf
+
+    @property
+    def prec(self) -> int:
+        return _EXPR_PREC[self.op]
+
+    def refs(self):
+        if self.ref is not None:
+            yield self.ref
+        for a in self.args:
+            yield from a.refs()
+
+    def _at(self, min_prec: int) -> str:
+        s = self.render()
+        return f"({s})" if self.prec < min_prec else s
+
+    def render(self) -> str:
+        if self.op == "num":
+            out = self.text
+            return out + (f" [{self.unit.render()}]" if self.unit is not None else "")
+        if self.op == "string":
+            body = self.text.replace("\\", "\\\\").replace('"', '\\"')
+            return f'"{body}"'
+        if self.op == "boolean":
+            return self.text
+        if self.op == "ref":
+            return self.ref.render()
+        if self.op == "seq":
+            return "(" + ", ".join(a.render() for a in self.args) + ")"
+        if self.op == "neg":
+            return "-" + self.args[0]._at(self.prec)
+        if self.op == "not":
+            return "not " + self.args[0]._at(self.prec)
+        if self.op == "cmp":
+            left, right = self.args
+            return f"{left._at(self.prec)} {self.text} {right._at(self.prec + 1)}"
+        if self.op in _EXPR_BINOPS:
+            left, right = self.args
+            sym = _EXPR_BINOPS[self.op]
+            return f"{left._at(self.prec)} {sym} {right._at(self.prec + 1)}"
+        if self.op == "call":
+            return self.ref.render() + "(" + ", ".join(a.render() for a in self.args) + ")"
+        if self.op == "arrow":
+            base, args = self.args[0], self.args[1:]
+            return f"{base._at(self.prec)}->{self.name}(" + ", ".join(a.render() for a in args) + ")"
+        raise ValueError(f"unknown expr op {self.op!r}")
+
+
 @dataclass(eq=False)
 class Value:
-    """A literal or reference value assigned to a usage (`= ...`)."""
+    """A literal, reference or general expression assigned to a usage (`= ...`)."""
 
-    kind: str  # "number" | "string" | "boolean" | "ref"
+    kind: str  # "number" | "string" | "boolean" | "ref" | "expr"
     text: str  # number text, raw string content, "true"/"false"
     ref: Ref | None = None
     unit: Ref | None = None
+    expr: Expr | None = None  # set when kind == "expr"
 
     def render(self) -> str:
+        if self.kind == "expr":
+            return self.expr.render()
         if self.kind == "string":
             body = self.text.replace("\\", "\\\\").replace('"', '\\"')
             out = f'"{body}"'
@@ -214,6 +294,8 @@ class Value:
         return out
 
     def to_json(self):
+        if self.kind == "expr":
+            return {"kind": "expression", "value": self.expr.render()}
         if self.kind == "number":
             num = float(self.text)
             py = int(num) if num.is_integer() and "." not in self.text and "e" not in self.text.lower() else num
@@ -227,6 +309,13 @@ class Value:
         if self.unit is not None:
             data["unit"] = str(self.unit)
         return data
+
+    def refs(self):
+        if self.kind == "ref" and self.ref is not None:
+            yield "value", self.ref
+        elif self.kind == "expr" and self.expr is not None:
+            for r in self.expr.refs():
+                yield "value", r
 
 
 class Node:
@@ -334,8 +423,8 @@ class Element(Node):
             yield "metadata", r
         for r in self.about:
             yield "about", r
-        if self.value is not None and self.value.ref is not None:
-            yield "value", self.value.ref
+        if self.value is not None:
+            yield from self.value.refs()
 
 
 @dataclass(eq=False)
@@ -412,6 +501,22 @@ class Alias(Node):
 
     def refs(self):
         yield "alias", self.target
+
+
+@dataclass(eq=False)
+class ExprStatement(Node):
+    """A bare result expression in a `constraint`/`calc` body, e.g.
+    `constraint { massActual <= massReqd }`: the value of the last
+    expression is the definition's implicit result, so (unlike every other
+    statement) it is not terminated by `;`."""
+
+    expr: Expr
+    owner: "Element | None" = None
+    document: "Document | None" = None
+
+    def refs(self):
+        for r in self.expr.refs():
+            yield "value", r
 
 
 @dataclass(eq=False)

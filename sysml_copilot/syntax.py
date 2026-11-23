@@ -25,6 +25,8 @@ from .model import (
     Comment,
     Document,
     Element,
+    Expr,
+    ExprStatement,
     Import,
     Ref,
     Relationship,
@@ -57,6 +59,11 @@ GRAMMAR = rf"""
                 | alias_stmt
                 | doc_stmt
                 | comment_stmt
+                | expr_stmt
+
+    // The implicit result of a `constraint`/`calc` body: unlike every other
+    // statement, it is a bare expression with no leading keyword and no `;`.
+    expr_stmt: expr
 
     package: library_prefix? "package" short_name? name body
     !library_prefix: "standard" "library" | "library"
@@ -91,11 +98,44 @@ GRAMMAR = rf"""
 
     value: value_op expr
     !value_op: "=" | ":=" | "default" | "default" "=" | "default" ":="
-    ?expr: SIGNED_NUMBER unit? -> num
-         | ESCAPED_STRING      -> string
-         | "true"              -> true
-         | "false"             -> false
-         | ref                 -> refval
+
+    // Precedence climbing, loosest to tightest; mirrors `model._EXPR_PREC`.
+    ?expr: or_expr
+    ?or_expr: and_expr
+            | or_expr "or" and_expr -> or_
+    ?and_expr: not_expr
+             | and_expr "and" not_expr -> and_
+             | and_expr "xor" not_expr -> xor_
+    ?not_expr: cmp_expr
+             | "not" not_expr -> not_
+    ?cmp_expr: add_expr
+             | add_expr "==" add_expr -> eq
+             | add_expr "!=" add_expr -> ne
+             | add_expr "<=" add_expr -> le
+             | add_expr ">=" add_expr -> ge
+             | add_expr "<" add_expr -> lt
+             | add_expr ">" add_expr -> gt
+    ?add_expr: mul_expr
+             | add_expr "+" mul_expr -> add
+             | add_expr "-" mul_expr -> sub
+    ?mul_expr: unary_expr
+             | mul_expr "*" unary_expr -> mul
+             | mul_expr "/" unary_expr -> div
+             | mul_expr "%" unary_expr -> mod
+    ?unary_expr: nav_expr
+               | "-" unary_expr -> neg
+    ?nav_expr: primary
+             | nav_expr "->" name "(" arglist? ")" -> arrow
+    ?primary: SIGNED_NUMBER unit? -> num
+            | ESCAPED_STRING      -> string
+            | "true"              -> true
+            | "false"             -> false
+            | invocation
+            | "(" expr ")"                    -> paren
+            | "(" expr ("," expr)+ ")"        -> seq
+            | ref                 -> refval
+    invocation: ref "(" arglist? ")"
+    arglist: expr ("," expr)*
     unit: "[" ref "]"
 
     !kind: {_KIND_ALTERNATIVES}
@@ -246,21 +286,76 @@ def _refs(tree: Tree) -> list[Ref]:
     return [_ref(c) for c in tree.children if isinstance(c, Tree) and c.data == "ref"]
 
 
-def _value(expr: Tree) -> Value:
-    if expr.data == "num":
+_EXPR_BINOP_DATA = {"add", "sub", "mul", "div", "mod", "and_", "or_", "xor_"}
+_CMP_SYMS = {"eq": "==", "ne": "!=", "lt": "<", "gt": ">", "le": "<=", "ge": ">="}
+
+
+def _build_expr_tree(tree: Tree) -> Expr:
+    data = tree.data
+    if data == "num":
         unit = None
-        if len(expr.children) > 1:
-            unit = _ref(expr.children[1].children[0])
-        return Value("number", str(expr.children[0]), unit=unit)
-    if expr.data == "string":
-        return Value("string", _unescape_string(str(expr.children[0])))
-    if expr.data == "true":
-        return Value("boolean", "true")
-    if expr.data == "false":
-        return Value("boolean", "false")
-    if expr.data == "refval":
-        return Value("ref", "", ref=_ref(expr.children[0]))
-    raise ValueError(f"unexpected value node {expr.data}")
+        if len(tree.children) > 1:
+            unit = _ref(tree.children[1].children[0])
+        return Expr("num", text=str(tree.children[0]), unit=unit)
+    if data == "string":
+        return Expr("string", text=_unescape_string(str(tree.children[0])))
+    if data == "true":
+        return Expr("boolean", text="true")
+    if data == "false":
+        return Expr("boolean", text="false")
+    if data == "refval":
+        return Expr("ref", ref=_ref(tree.children[0]))
+    if data == "paren":
+        return _build_expr_tree(tree.children[0])
+    if data == "seq":
+        return Expr("seq", args=[_build_expr_tree(c) for c in tree.children])
+    if data == "neg":
+        return Expr("neg", args=[_build_expr_tree(tree.children[0])])
+    if data == "not_":
+        return Expr("not", args=[_build_expr_tree(tree.children[0])])
+    if data in _EXPR_BINOP_DATA:
+        op = data[:-1] if data.endswith("_") else data  # and_/or_/xor_ -> and/or/xor
+        left, right = (_build_expr_tree(c) for c in tree.children)
+        return Expr(op, args=[left, right])
+    if data in _CMP_SYMS:
+        left, right = (_build_expr_tree(c) for c in tree.children)
+        return Expr("cmp", text=_CMP_SYMS[data], args=[left, right])
+    if data == "invocation":
+        ref_node, args = None, []
+        for c in tree.children:
+            if c.data == "ref":
+                ref_node = _ref(c)
+            elif c.data == "arglist":
+                args = [_build_expr_tree(a) for a in c.children]
+        return Expr("call", ref=ref_node, args=args)
+    if data == "arrow":
+        base, member_name, args = None, None, []
+        for c in tree.children:
+            if isinstance(c, Token):
+                member_name = unescape_name(c)
+            elif c.data == "arglist":
+                args = [_build_expr_tree(a) for a in c.children]
+            else:
+                base = _build_expr_tree(c)
+        return Expr("arrow", name=member_name, args=[base, *args])
+    raise ValueError(f"unexpected expr node {data}")
+
+
+def _value(expr: Tree) -> Value:
+    """Build a `Value` from a parsed `expr` tree: a bare literal or
+    reference collapses to the matching simple kind (unchanged from before
+    expressions were supported); anything with an operator keeps the full
+    tree under kind "expr"."""
+    e = _build_expr_tree(expr)
+    if e.op == "num":
+        return Value("number", e.text, unit=e.unit)
+    if e.op == "string":
+        return Value("string", e.text)
+    if e.op == "boolean":
+        return Value("boolean", e.text)
+    if e.op == "ref":
+        return Value("ref", "", ref=e.ref)
+    return Value("expr", "", expr=e)
 
 
 def _kind_keyword(tree: Tree) -> str:
@@ -478,6 +573,9 @@ def _build(tree: Tree, document):
                     raise SysmlSyntaxError("an alias body may only contain a doc comment",
                                            line=child.meta.line, column=child.meta.column)
         return alias
+
+    if data == "expr_stmt":
+        return ExprStatement(_build_expr_tree(tree.children[0]))
 
     if data == "doc_stmt":
         return clean_doc(str(tree.children[0]))
@@ -710,6 +808,8 @@ def render_statement(node) -> str:
         return " ".join(_prefix(node) + ["alias"] + short + [quote_name(node.name), "for", f"{node.target.render()};"])
     if isinstance(node, Comment):
         return "\n".join(_render_comment(node, ""))
+    if isinstance(node, ExprStatement):
+        return node.expr.render()
     raise TypeError(node)
 
 

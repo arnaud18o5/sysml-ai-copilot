@@ -258,6 +258,64 @@ library package L2;
     assert "port p : ~P;" in out and "@Safety;" in out and "library package L2 {" in out
 
 
+def test_expression_values_roundtrip():
+    text = """
+package Expr {
+    part def Vehicle {
+        attribute mass : Real;
+        attribute chassisMass : Real;
+        attribute engineMass : Real;
+    }
+
+    part vehicle : Vehicle {
+        attribute totalMass : Real = chassisMass + engineMass + 2 * (vehicle.mass - 1);
+        attribute negated : Real = -vehicle.mass;
+        attribute ok : Boolean = not (vehicle.mass > 0);
+        attribute scaled : Real = vehicle->size(2, vehicle.mass)->first();
+        attribute items : Real = (1, 2, 3);
+
+        constraint {
+            totalMass == chassisMass + engineMass and vehicle.mass > 0
+        }
+    }
+}
+"""
+    doc, out = roundtrip(text)
+    pkg = doc.members[0]
+    vehicle = next(m for m in pkg.members if isinstance(m, Element) and m.effective_name == "vehicle")
+    f = {m.effective_name: m for m in vehicle.members if isinstance(m, Element) and m.effective_name}
+
+    assert f["totalMass"].value.kind == "expr"
+    assert f["totalMass"].value.expr.op == "add"
+    assert f["negated"].value.expr.op == "neg"
+    assert f["ok"].value.expr.op == "not"
+    assert f["scaled"].value.expr.op == "arrow" and f["scaled"].value.expr.name == "first"
+    assert f["items"].value.expr.op == "seq" and len(f["items"].value.expr.args) == 3
+
+    constraint = next(m for m in vehicle.members if isinstance(m, Element) and m.keyword == "constraint")
+    [result] = [m for m in constraint.members if not isinstance(m, Element)]
+    assert result.expr.op == "and"
+
+    # Refs embedded in expressions are exposed through refs() for resolution
+    # and rename/move rewriting, same as any other reference.
+    refs = {str(r) for r in f["totalMass"].value.expr.refs()}
+    assert refs == {"chassisMass", "engineMass", "vehicle.mass"}
+    assert "totalMass == chassisMass + engineMass and vehicle.mass > 0" in out
+    assert "2 * (vehicle.mass - 1)" in out
+
+
+def test_expression_precedence_round_trips_minimal_parens():
+    doc, out = roundtrip("package P { attribute a : Real = 1 - 2 - 3; }")
+    e = doc.members[0].members[0].value.expr
+    assert e.op == "sub" and e.args[0].op == "sub"
+    assert "1 - 2 - 3" in out
+
+    doc2, out2 = roundtrip("package P { attribute a : Real = 1 - (2 - 3); }")
+    e2 = doc2.members[0].members[0].value.expr
+    assert e2.args[1].op == "sub"
+    assert "1 - (2 - 3)" in out2
+
+
 def test_modifier_misuse_is_rejected():
     with pytest.raises(SysmlSyntaxError):
         parse_document("package P { in part def A; }")

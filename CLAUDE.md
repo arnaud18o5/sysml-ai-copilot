@@ -48,7 +48,7 @@ Tests run with `MBSE_SEMANTIC=off` (set in `tests/conftest.py`) and a fake embed
 
 ## Known limitations (don't treat as bugs to silently fix without discussion)
 
-- Only a subset of SysML v2 textual notation is supported (see README): no expressions/constraint bodies, no behaviour (successions, transitions, `perform`), no `subject`/`bind`/`flow`. Plain comments are dropped on write-back; `doc` and `comment` are kept.
+- Only a subset of SysML v2 textual notation is supported (see README): expressions (arithmetic, comparison, boolean, invocation, `.`/`->` navigation, collection literals) and `constraint`/`calc` bodies are supported, but not `..` ranges, `#()` indexing, named arguments, or `->forAll { in x: T; ... }`-style block arguments; no behaviour (successions, transitions, `perform`), no `subject`/`bind`/`flow`. Plain comments are dropped on write-back; `doc` and `comment` are kept.
 - Name resolution is a pragmatic subset of SysML v2 scoping (no visibility rules, simplified redefinition semantics), with a last-resort global-name fallback reported as a `heuristic_reference` warning.
 - Semantic retrieval is only as good as the element names and `doc` text, and the default model is small (a 1 GB multilingual mpnet was tried and wasn't clearly better on the sample). Don't change the default model without checking with the maintainer first.
 
