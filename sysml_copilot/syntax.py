@@ -393,6 +393,17 @@ def _build_member(tree: Tree, document):
     if isinstance(node, (Element, Import, Alias, Comment)):
         node.visibility = visibility
     if modifiers is not None:
+        if isinstance(node, Relationship):
+            # A relationship (`connect`, `satisfy`, `allocate`) may carry `#`
+            # metadata annotations like any other member, but has no other
+            # modifiers to apply.
+            for m in modifiers.children:
+                if m.data != "prefix_metadata":
+                    raise SysmlSyntaxError(
+                        f"'{str(m.children[0])}' is not allowed on a relationship",
+                        line=tree.meta.line, column=tree.meta.column)
+                node.metadata.append(_ref(m.children[0]))
+            return node
         if not isinstance(node, Element):
             raise SysmlSyntaxError("modifiers and '#' annotations are only allowed on elements",
                                    line=tree.meta.line, column=tree.meta.column)
@@ -782,12 +793,14 @@ def element_header(elem: Element) -> str:
 
 def render_statement(node) -> str:
     if isinstance(node, Relationship):
+        prefix = _prefix(node)
+        pre = " ".join(prefix) + " " if prefix else ""
         if node.kind == "connect":
-            return f"connect {node.source.render()} to {node.target.render()};"
+            return pre + f"connect {node.source.render()} to {node.target.render()};"
         if node.kind == "satisfy":
-            return f"satisfy {node.target.render()} by {node.source.render()};"
+            return pre + f"satisfy {node.target.render()} by {node.source.render()};"
         if node.kind == "allocate":
-            return f"allocate {node.source.render()} to {node.target.render()};"
+            return pre + f"allocate {node.source.render()} to {node.target.render()};"
     if isinstance(node, Import):
         return " ".join(_prefix(node) + [f"import {node.render_path()};"])
     if isinstance(node, Alias):

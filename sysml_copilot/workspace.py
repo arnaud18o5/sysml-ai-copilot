@@ -530,7 +530,7 @@ class Workspace:
                         "error", "satisfy_non_requirement",
                         f"{where}: {self.id_of(target)} is a {target.kind}, not a requirement",
                         document=node.document.path))
-                if node.kind == "connect" and not target.is_usage:
+                if node.kind == "connect" and role in ("source", "target") and not target.is_usage:
                     out.append(Diagnostic(
                         "warning", "connect_non_usage",
                         f"{where}: endpoint {self.id_of(target)} is a {target.kind}; connect "

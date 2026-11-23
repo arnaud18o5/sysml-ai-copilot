@@ -3,6 +3,12 @@ package VehicleFuelSystem {
 
     attribute def Pressure;
 
+    metadata def Critical;
+
+    case def Diagnose {
+        doc /* Investigates reported fuel system faults. */
+    }
+
     part def Engine {
         port fuelIn : FuelPort;
     }
@@ -25,7 +31,7 @@ package VehicleFuelSystem {
         part pump : FuelPump;
 
         connect tank.fuelOut to pump.fuelIn;
-        connect pump.fuelOut to engine.fuelIn;
+        #Critical connect pump.fuelOut to engine.fuelIn;
 
         attribute capacityMargin : Real = tank.capacity - 10;
 

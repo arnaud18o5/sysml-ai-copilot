@@ -86,6 +86,43 @@ def test_typing_checks_and_cycles():
     assert "satisfy_non_requirement" in found
 
 
+def test_case_is_compatible_with_calc_typing():
+    # Case :> Calculation in the standard library: a generic `calc` usage
+    # may be typed by the more specific `case def` (no semantics lost), but
+    # not the other way around (a `case` usage asking for calc-def typing
+    # would lose case-specific meaning) - same asymmetry as action/calc.
+    ws = Workspace.from_text("""package P {
+    calc def Calc1;
+    case def Case1;
+    part holder {
+        calc c : Case1;
+    }
+}""")
+    assert "typing_kind_mismatch" not in codes(ws)
+
+    ws2 = Workspace.from_text("""package P {
+    calc def Calc1;
+    part holder {
+        case x : Calc1;
+    }
+}""")
+    assert "typing_kind_mismatch" in codes(ws2)
+
+
+def test_relationship_metadata_is_resolved_and_rewritten_on_rename():
+    ws = Workspace.from_text("""package P {
+    metadata def Tag;
+    part def A { port p; }
+    part def B { port q; }
+    part a : A;
+    part b : B;
+    #Tag connect a.p to b.q;
+}""")
+    assert codes(ws, "error") == []
+    rel = next(n for n in ws.nodes() if type(n).__name__ == "Relationship")
+    assert str(rel.metadata[0]) == "Tag"
+
+
 def test_duplicates_are_reported_not_silently_merged():
     ws = Workspace.from_text("package P { part def A; part def A; }")
     assert "duplicate_name" in codes(ws, "error")
