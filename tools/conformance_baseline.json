@@ -120,7 +120,10 @@
    "parse",
    "roundtrip"
   ],
-  "sysml.library/Systems Library/Cases.sysml": [],
+  "sysml.library/Systems Library/Cases.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml.library/Systems Library/Connections.sysml": [
    "parse",
    "roundtrip"
@@ -181,7 +184,10 @@
   ],
   "sysml/src/examples/Camera Example/PictureTaking.sysml": [],
   "sysml/src/examples/Cause and Effect Examples/CauseAndEffectExample.sysml": [],
-  "sysml/src/examples/Cause and Effect Examples/MedicalDeviceFailure.sysml": [],
+  "sysml/src/examples/Cause and Effect Examples/MedicalDeviceFailure.sysml": [
+   "parse",
+   "roundtrip"
+  ],
   "sysml/src/examples/Comment Examples/Comments.sysml": [
    "parse",
    "roundtrip"
